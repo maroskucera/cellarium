@@ -147,7 +147,7 @@
     const noteInput = document.getElementById("note");
 
     const entry = {
-      value: valueInput.value.trim(),
+      value: valueInput.value.trim().replace(",", "."),
       entry_date: dateInput.value || undefined,
       note: noteInput.value.trim() || undefined,
     };

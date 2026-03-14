@@ -1,0 +1,24 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build output
+/receipt-tracker/receipt-tracker
+
+# Local environment overrides (may contain secrets)
+.env.local
+
+# IDE and tool settings
+.idea/
+.vscode/
+.claude/settings.local.json
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

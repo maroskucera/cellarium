@@ -1,0 +1,73 @@
+<!--
+Cellarium Receipt Tracker — mobile-first PWA for logging receipt values
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Receipt Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+  <main>
+    <h1>Receipt Tracker</h1>
+    <form id="entry-form" autocomplete="off">
+      <div class="field">
+        <label for="value">Amount</label>
+        <input
+          id="value"
+          name="value"
+          type="text"
+          inputmode="decimal"
+          placeholder="0.00"
+          required
+          autofocus
+        >
+      </div>
+      <div class="field">
+        <label for="entry_date">Date</label>
+        <input
+          id="entry_date"
+          name="entry_date"
+          type="date"
+        >
+      </div>
+      <div class="field">
+        <label for="note">Note</label>
+        <input
+          id="note"
+          name="note"
+          type="text"
+          placeholder="optional"
+        >
+      </div>
+      <button type="submit">Save Entry</button>
+    </form>
+    <div id="status" class="status">
+      <span id="status-text">Online</span>
+      <span id="queue-count" class="hidden">0 queued</span>
+    </div>
+    <div id="toast" class="toast hidden"></div>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

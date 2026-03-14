@@ -1,0 +1,16 @@
+[Unit]
+Description=Cellarium Receipt Tracker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/bin/receipt-tracker
+Restart=on-failure
+RestartSec=5
+
+Environment=DATABASE_URL=postgres://localhost:5432/cellarium?sslmode=disable
+Environment=LISTEN_ADDR=:8080
+
+[Install]
+WantedBy=default.target

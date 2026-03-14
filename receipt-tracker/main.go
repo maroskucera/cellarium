@@ -19,14 +19,20 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/maroskucera/cellarium/receipt-tracker/db/sqlc"
 )
@@ -34,20 +40,100 @@ import (
 //go:embed frontend/*
 var frontendFS embed.FS
 
-func main() {
-	// Load env files: app dir is the executable's directory, root is one level up.
-	exe, err := os.Executable()
+//go:embed db/migrations/*.sql
+var migrationsFS embed.FS
+
+func loadEnvFromCwd() {
+	appDir, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
-	appDir := filepath.Dir(exe)
-
-	// When running with `go run`, use the working directory instead.
-	if wd, err := os.Getwd(); err == nil {
-		appDir = wd
-	}
 	rootDir := filepath.Dir(appDir)
 	loadEnvFiles(rootDir, appDir)
+}
+
+func newMigrate(dbURL string) (*migrate.Migrate, error) {
+	source, err := iofs.New(migrationsFS, "db/migrations")
+	if err != nil {
+		return nil, err
+	}
+	return migrate.NewWithSourceInstance("iofs", source, "pgx5://"+dbURL[len("postgres://"):])
+}
+
+func runMigrations(dbURL string, steps int) error {
+	m, err := newMigrate(dbURL)
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+	if steps == 0 {
+		err = m.Up()
+	} else {
+		err = m.Steps(steps)
+	}
+	if errors.Is(err, migrate.ErrNoChange) {
+		return nil
+	}
+	return err
+}
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "-migrate" {
+		args := os.Args[2:]
+
+		// Load env and get DATABASE_URL early for migrate commands.
+		loadEnvFromCwd()
+
+		dbURL := os.Getenv("DATABASE_URL")
+		if dbURL == "" {
+			log.Fatal("DATABASE_URL is required")
+		}
+
+		dir := "up"
+		if len(args) > 0 {
+			dir = args[0]
+		}
+
+		switch dir {
+		case "up":
+			if len(args) > 1 {
+				n, err := strconv.Atoi(args[1])
+				if err != nil || n <= 0 {
+					log.Fatal("usage: -migrate up [N]")
+				}
+				log.Printf("applying %d migration(s)...", n)
+				if err := runMigrations(dbURL, n); err != nil {
+					log.Fatalf("migration failed: %v", err)
+				}
+			} else {
+				log.Println("applying all pending migrations...")
+				if err := runMigrations(dbURL, 0); err != nil {
+					log.Fatalf("migration failed: %v", err)
+				}
+			}
+			log.Println("migrations complete")
+		case "down":
+			if len(args) < 2 {
+				log.Fatal("usage: -migrate down N (number of migrations to roll back is required)")
+			}
+			n, err := strconv.Atoi(args[1])
+			if err != nil || n <= 0 {
+				log.Fatal("usage: -migrate down N")
+			}
+			log.Printf("rolling back %d migration(s)...", n)
+			if err := runMigrations(dbURL, -n); err != nil {
+				log.Fatalf("rollback failed: %v", err)
+			}
+			log.Println("rollback complete")
+		default:
+			fmt.Fprintf(os.Stderr, "unknown migrate direction: %s\nusage: -migrate [up [N] | down N]\n", dir)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Load env files for normal server startup.
+	loadEnvFromCwd()
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {

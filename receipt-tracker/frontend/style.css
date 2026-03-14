@@ -81,6 +81,7 @@ label {
 
 input {
   width: 100%;
+  max-width: 100%;
   padding: 1rem;
   font-size: 1.25rem;
   font-family: var(--font);
@@ -90,6 +91,8 @@ input {
   border-radius: var(--radius);
   outline: none;
   transition: border-color 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 input:focus {

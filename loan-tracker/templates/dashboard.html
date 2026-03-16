@@ -1,0 +1,103 @@
+<!--
+Cellarium Loan Tracker — dashboard page template
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Tracker</title>
+    <link rel="stylesheet" href="/frontend/style.css">
+</head>
+<body>
+    <main>
+        <h1>Loan Tracker</h1>
+
+        <form method="POST" action="/payment">
+            <fieldset>
+                <legend>Record Payment</legend>
+
+                <label for="amount">Amount</label>
+                <input type="text" id="amount" name="amount"
+                       inputmode="decimal" value="{{.LastPaymentAmount}}" required>
+
+                <label for="payment_date">Date</label>
+                <input type="date" id="payment_date" name="payment_date"
+                       value="{{.TodayStr}}" required>
+            </fieldset>
+
+            <button type="submit">Record Payment</button>
+        </form>
+
+        <section class="stats">
+            <h2>Repayment Progress</h2>
+
+            <div class="stat-row">
+                <span class="stat-label">Loan amount</span>
+                <span class="stat-value">{{.LoanAmount}}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Amount repaid</span>
+                <span class="stat-value">{{.TotalRepaid}}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Amount remaining</span>
+                <span class="stat-value">{{.AmountRemaining}}</span>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{.PercentRepaid}}%"></div>
+                    <div class="milestone milestone-25"><span>25%</span></div>
+                    <div class="milestone milestone-50"><span>50%</span></div>
+                    <div class="milestone milestone-75"><span>75%</span></div>
+                </div>
+                <div class="progress-label">{{.PercentRepaid}}% repaid</div>
+            </div>
+
+            <div class="stat-row">
+                <span class="stat-label">Projected repayment</span>
+                <span class="stat-value">{{.ProjectedDate}}</span>
+            </div>
+        </section>
+
+        <details class="payment-history">
+            <summary>Payment history ({{.PaymentCount}})</summary>
+            {{if .Payments}}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Payments}}
+                    <tr>
+                        <td>{{.Date}}</td>
+                        <td>{{.Amount}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p>No payments recorded yet.</p>
+            {{end}}
+        </details>
+    </main>
+</body>
+</html>

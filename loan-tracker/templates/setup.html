@@ -1,0 +1,62 @@
+<!--
+Cellarium Loan Tracker — setup page template
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Tracker — Setup</title>
+    <link rel="stylesheet" href="/frontend/style.css">
+</head>
+<body>
+    <main>
+        <h1>Loan Tracker</h1>
+        <h2>Set Up Your Loan</h2>
+
+        <form method="POST" action="/setup">
+            <fieldset>
+                <legend>Loan Details</legend>
+
+                <label for="loan_amount">Loan Amount</label>
+                <input type="text" id="loan_amount" name="loan_amount"
+                       inputmode="decimal" placeholder="e.g. 10000.00" required>
+
+                <label for="loan_date">Loan Date</label>
+                <input type="date" id="loan_date" name="loan_date" required>
+            </fieldset>
+
+            <fieldset>
+                <legend>Payments Already Made (optional)</legend>
+
+                {{range $i := .PaymentSlots}}
+                <div class="payment-row">
+                    <label for="payment_amount_{{$i}}">Amount #{{$i}}</label>
+                    <input type="text" id="payment_amount_{{$i}}" name="payment_amount_{{$i}}"
+                           inputmode="decimal" placeholder="e.g. 500.00">
+
+                    <label for="payment_date_{{$i}}">Date #{{$i}}</label>
+                    <input type="date" id="payment_date_{{$i}}" name="payment_date_{{$i}}">
+                </div>
+                {{end}}
+            </fieldset>
+
+            <button type="submit">Start Tracking</button>
+        </form>
+    </main>
+</body>
+</html>

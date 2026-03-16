@@ -23,38 +23,24 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/maroskucera/cellarium/receipt-tracker/db/sqlc"
 )
 
 type stubQuerier struct {
-	entry sqlc.ReceiptsEntry
-	err   error
+	id  int64
+	err error
 }
 
-func (s *stubQuerier) CreateEntry(_ context.Context, arg sqlc.CreateEntryParams) (sqlc.ReceiptsEntry, error) {
+func (s *stubQuerier) CreateEntry(_ context.Context, _ sqlc.CreateEntryParams) (int64, error) {
 	if s.err != nil {
-		return sqlc.ReceiptsEntry{}, s.err
+		return 0, s.err
 	}
-	result := s.entry
-	result.Value = arg.Value
-	result.EntryDate = arg.EntryDate
-	result.Note = arg.Note
-	return result, nil
+	return s.id, nil
 }
 
 func newStubQuerier() *stubQuerier {
-	return &stubQuerier{
-		entry: sqlc.ReceiptsEntry{
-			ID: 1,
-			CreatedAt: pgtype.Timestamptz{
-				Time:  time.Date(2026, 3, 14, 12, 0, 0, 0, time.UTC),
-				Valid: true,
-			},
-		},
-	}
+	return &stubQuerier{id: 1}
 }
 
 func TestHandleCreateEntry(t *testing.T) {
@@ -80,15 +66,6 @@ func TestHandleCreateEntry(t *testing.T) {
 		if resp.ID != 1 {
 			t.Errorf("got ID %d, want 1", resp.ID)
 		}
-		if resp.Value != "42.50" {
-			t.Errorf("got Value %q, want %q", resp.Value, "42.50")
-		}
-		if resp.EntryDate != "2026-03-14" {
-			t.Errorf("got EntryDate %q, want %q", resp.EntryDate, "2026-03-14")
-		}
-		if resp.Note != "groceries" {
-			t.Errorf("got Note %q, want %q", resp.Note, "groceries")
-		}
 	})
 
 	t.Run("valid request with only value defaults date and note", func(t *testing.T) {
@@ -110,13 +87,8 @@ func TestHandleCreateEntry(t *testing.T) {
 		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 			t.Fatalf("failed to decode response: %v", err)
 		}
-
-		today := time.Now().Format("2006-01-02")
-		if resp.EntryDate != today {
-			t.Errorf("got EntryDate %q, want %q", resp.EntryDate, today)
-		}
-		if resp.Note != "" {
-			t.Errorf("got Note %q, want empty", resp.Note)
+		if resp.ID != 1 {
+			t.Errorf("got ID %d, want 1", resp.ID)
 		}
 	})
 

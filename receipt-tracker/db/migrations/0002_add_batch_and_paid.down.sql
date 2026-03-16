@@ -1,4 +1,4 @@
--- Cellarium Receipt Tracker — receipt entry queries
+-- Remove batch and paid columns from receipt entries
 -- Copyright (C) 2026 Maroš Kučera
 --
 -- This program is free software: you can redistribute it and/or modify
@@ -14,22 +14,6 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
--- name: CreateEntry :one
-WITH current_batch AS (
-    SELECT COALESCE(MAX(batch), 0) AS max_batch FROM receipts.entries
-),
-next_batch AS (
-    SELECT CASE
-        WHEN cb.max_batch = 0 THEN 1
-        WHEN EXISTS (
-            SELECT 1 FROM receipts.entries
-            WHERE batch = cb.max_batch AND paid = FALSE
-        ) THEN cb.max_batch
-        ELSE cb.max_batch + 1
-    END AS batch
-    FROM current_batch cb
-)
-INSERT INTO receipts.entries (value, entry_date, note, batch, paid)
-SELECT @value, @entry_date, @note, nb.batch, FALSE
-FROM next_batch nb
-RETURNING id;
+ALTER TABLE receipts.entries
+    DROP COLUMN batch,
+    DROP COLUMN paid;

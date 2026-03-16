@@ -14,4 +14,6 @@ type ReceiptsEntry struct {
 	EntryDate pgtype.Date        `json:"entry_date"`
 	Note      string             `json:"note"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Batch     int32              `json:"batch"`
+	Paid      bool               `json:"paid"`
 }

@@ -13,9 +13,24 @@ import (
 
 const createEntry = `-- name: CreateEntry :one
 
-INSERT INTO receipts.entries (value, entry_date, note)
-VALUES ($1, $2, $3)
-RETURNING id, value, entry_date, note, created_at
+WITH current_batch AS (
+    SELECT COALESCE(MAX(batch), 0) AS max_batch FROM receipts.entries
+),
+next_batch AS (
+    SELECT CASE
+        WHEN cb.max_batch = 0 THEN 1
+        WHEN EXISTS (
+            SELECT 1 FROM receipts.entries
+            WHERE batch = cb.max_batch AND paid = FALSE
+        ) THEN cb.max_batch
+        ELSE cb.max_batch + 1
+    END AS batch
+    FROM current_batch cb
+)
+INSERT INTO receipts.entries (value, entry_date, note, batch, paid)
+SELECT $1, $2, $3, nb.batch, FALSE
+FROM next_batch nb
+RETURNING id
 `
 
 type CreateEntryParams struct {
@@ -39,15 +54,9 @@ type CreateEntryParams struct {
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) (ReceiptsEntry, error) {
+func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createEntry, arg.Value, arg.EntryDate, arg.Note)
-	var i ReceiptsEntry
-	err := row.Scan(
-		&i.ID,
-		&i.Value,
-		&i.EntryDate,
-		&i.Note,
-		&i.CreatedAt,
-	)
-	return i, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }

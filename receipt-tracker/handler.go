@@ -33,11 +33,7 @@ type createEntryRequest struct {
 }
 
 type createEntryResponse struct {
-	ID        int64  `json:"id"`
-	Value     string `json:"value"`
-	EntryDate string `json:"entry_date"`
-	Note      string `json:"note"`
-	CreatedAt string `json:"created_at"`
+	ID int64 `json:"id"`
 }
 
 func handleCreateEntry(q sqlc.Querier) http.Handler {
@@ -92,23 +88,13 @@ func handleCreateEntry(q sqlc.Querier) http.Handler {
 			Note: req.Note,
 		}
 
-		entry, err := q.CreateEntry(r.Context(), params)
+		id, err := q.CreateEntry(r.Context(), params)
 		if err != nil {
 			http.Error(w, "failed to create entry", http.StatusInternalServerError)
 			return
 		}
 
-		// Convert pgtype.Numeric back to string
-		valueStr := pgtype.Numeric{Int: entry.Value.Int, Exp: entry.Value.Exp, Valid: true}
-		valFloat, _ := valueStr.Float64Value()
-
-		resp := createEntryResponse{
-			ID:        entry.ID,
-			Value:     big.NewFloat(valFloat.Float64).Text('f', 2),
-			EntryDate: entry.EntryDate.Time.Format("2006-01-02"),
-			Note:      entry.Note,
-			CreatedAt: entry.CreatedAt.Time.Format(time.RFC3339),
-		}
+		resp := createEntryResponse{ID: id}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)

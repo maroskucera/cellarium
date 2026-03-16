@@ -1,4 +1,4 @@
-// Cellarium Receipt Tracker — a mobile-first PWA for logging receipt values
+// Cellarium Receipt Tracker — a mobile-first form for logging receipt values
 // Copyright (C) 2026 Maroš Kučera
 //
 // This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"io/fs"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -37,8 +37,11 @@ import (
 	"github.com/maroskucera/cellarium/receipt-tracker/db/sqlc"
 )
 
-//go:embed frontend/*
-var frontendFS embed.FS
+//go:embed templates/form.html
+var formTemplate string
+
+//go:embed static
+var staticFS embed.FS
 
 //go:embed db/migrations/*.sql
 var migrationsFS embed.FS
@@ -153,15 +156,11 @@ func main() {
 	defer pool.Close()
 
 	queries := sqlc.New(pool)
+	tmpl := template.Must(template.New("form").Parse(formTemplate))
 
 	mux := http.NewServeMux()
-	mux.Handle("/api/entries", handleCreateEntry(queries))
-
-	frontendSub, err := fs.Sub(frontendFS, "frontend")
-	if err != nil {
-		log.Fatal(err)
-	}
-	mux.Handle("/", http.FileServerFS(frontendSub))
+	mux.Handle("/", handleRoot(queries, tmpl))
+	mux.Handle("/static/", http.FileServerFS(staticFS))
 
 	srv := &http.Server{
 		Addr:    listenAddr,

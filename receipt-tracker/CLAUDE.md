@@ -1,21 +1,22 @@
 # Receipt Tracker
 
-Mobile-first PWA for logging receipt values. Part of the Cellarium monorepo.
+A mobile-first server-rendered form for logging receipt values. Part of the Cellarium monorepo.
 
 ## Directory Layout
 
 ```
 receipt-tracker/
-  main.go           # entry point, server setup, embeds frontend
-  handler.go        # POST /api/entries handler
+  main.go           # entry point, server setup, template parsing
+  handler.go        # GET / (render form) and POST / (create entry)
   handler_test.go   # handler tests (stdlib only)
   envload.go        # hierarchical .env loading
   envload_test.go   # env loading tests
+  templates/        # Go html/template files
+  static/           # CSS (embedded into binary)
   db/
     migrations/     # golang-migrate SQL files
     queries/        # sqlc query definitions
     sqlc/           # generated Go code (committed)
-  frontend/         # vanilla JS PWA (no build step)
 ```
 
 ## Migrations
@@ -38,13 +39,14 @@ Run with `migrate` CLI — the app binary does not run migrations.
 
 - Handler functions take a `sqlc.Querier` interface and return `http.Handler`
 - This enables testing with stub implementations (no real database needed)
-- Value is transmitted as a string in JSON to avoid float precision issues
+- Value is transmitted as a form field string to avoid float precision issues
+- Uses Post-Redirect-Get (PRG) pattern to prevent double submissions
 
 ## Frontend
 
-- Vanilla HTML/CSS/JS, no build step
-- Embedded into the Go binary via `//go:embed`
-- Uses IndexedDB for offline queue, service worker for caching
+- Server-rendered HTML using Go `html/template`, no JavaScript
+- CSS embedded into the Go binary via `//go:embed`
+- Single route `/` handles both GET (render form) and POST (create entry)
 
 ## Formatting
 

@@ -1,5 +1,5 @@
 <!--
-Cellarium Receipt Tracker — mobile-first PWA for logging receipt values
+Cellarium Receipt Tracker — server-rendered form for logging receipt values
 Copyright (C) 2026 Maroš Kučera
 
 This program is free software: you can redistribute it and/or modify
@@ -22,15 +22,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#1a1a2e">
   <title>Receipt Tracker</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <main>
     <h1>Receipt Tracker</h1>
-    <form id="entry-form" autocomplete="off">
+    {{if .Success}}<div class="message success">Entry saved</div>{{end}}
+    {{if .Error}}<div class="message error">{{.Error}}</div>{{end}}
+    <form method="POST" action="/" autocomplete="off">
       <div class="field">
         <label for="value">Amount</label>
         <input
@@ -41,6 +40,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
           placeholder="0.00"
           required
           autofocus
+          value="{{.Value}}"
         >
       </div>
       <div class="field">
@@ -49,6 +49,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
           id="entry_date"
           name="entry_date"
           type="date"
+          value="{{if .EntryDate}}{{.EntryDate}}{{else}}{{.Today}}{{end}}"
         >
       </div>
       <div class="field">
@@ -58,16 +59,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
           name="note"
           type="text"
           placeholder="optional"
+          value="{{.Note}}"
         >
       </div>
       <button type="submit">Save Entry</button>
     </form>
-    <div id="status" class="status">
-      <span id="status-text">Online</span>
-      <span id="queue-count" class="hidden">0 queued</span>
-    </div>
-    <div id="toast" class="toast hidden"></div>
   </main>
-  <script src="app.js"></script>
 </body>
 </html>

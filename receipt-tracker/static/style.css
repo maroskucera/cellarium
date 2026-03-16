@@ -1,5 +1,5 @@
 /*
- * Cellarium Receipt Tracker — mobile-first PWA styles
+ * Cellarium Receipt Tracker — styles for server-rendered form
  * Copyright (C) 2026 Maroš Kučera
  *
  * This program is free software: you can redistribute it and/or modify
@@ -138,38 +138,21 @@ button[type="submit"]:disabled {
   cursor: not-allowed;
 }
 
-.status {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.toast {
-  position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0.75rem 1.5rem;
+.message {
+  padding: 0.75rem 1rem;
   border-radius: var(--radius);
   font-size: 0.9rem;
   font-weight: 600;
-  z-index: 100;
-  transition: opacity 0.3s;
+  text-align: center;
+  margin-bottom: 1.5rem;
 }
 
-.toast.success {
+.message.success {
   background: var(--success);
   color: #fff;
 }
 
-.toast.error {
+.message.error {
   background: var(--error);
   color: #fff;
-}
-
-.hidden {
-  display: none;
 }

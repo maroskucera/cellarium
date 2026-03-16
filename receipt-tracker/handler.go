@@ -1,4 +1,4 @@
-// Cellarium Receipt Tracker — HTTP handler for creating receipt entries
+// Cellarium Receipt Tracker — HTTP handler for the server-rendered form
 // Copyright (C) 2026 Maroš Kučera
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,7 @@
 package main
 
 import (
-	"encoding/json"
+	"html/template"
 	"math/big"
 	"net/http"
 	"time"
@@ -26,78 +26,90 @@ import (
 	"github.com/maroskucera/cellarium/receipt-tracker/db/sqlc"
 )
 
-type createEntryRequest struct {
-	Value     string `json:"value"`
-	EntryDate string `json:"entry_date"`
-	Note      string `json:"note"`
+type pageData struct {
+	Error     string
+	Success   bool
+	Value     string
+	EntryDate string
+	Note      string
+	Today     string
 }
 
-type createEntryResponse struct {
-	ID int64 `json:"id"`
-}
-
-func handleCreateEntry(q sqlc.Querier) http.Handler {
+func handleRoot(q sqlc.Querier, tmpl *template.Template) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+		today := time.Now().Format("2006-01-02")
 
-		var req createEntryRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
-			return
-		}
+		switch r.Method {
+		case http.MethodGet:
+			data := pageData{
+				Today:   today,
+				Success: r.URL.Query().Get("saved") == "1",
+			}
+			tmpl.Execute(w, data)
 
-		if req.Value == "" {
-			http.Error(w, "value is required", http.StatusBadRequest)
-			return
-		}
+		case http.MethodPost:
+			value := r.FormValue("value")
+			entryDate := r.FormValue("entry_date")
+			note := r.FormValue("note")
 
-		val, ok := new(big.Float).SetString(req.Value)
-		if !ok {
-			http.Error(w, "value must be a valid decimal number", http.StatusBadRequest)
-			return
-		}
+			data := pageData{
+				Value:     value,
+				EntryDate: entryDate,
+				Note:      note,
+				Today:     today,
+			}
 
-		// Convert big.Float to pgtype.Numeric via big.Int with 2 decimal places
-		// Multiply by 100, truncate to int, set exponent to -2
-		val100, _ := new(big.Float).Mul(val, big.NewFloat(100)).Int(nil)
-		numericValue := pgtype.Numeric{
-			Int:   val100,
-			Exp:   -2,
-			Valid: true,
-		}
-
-		entryDate := time.Now()
-		if req.EntryDate != "" {
-			parsed, err := time.Parse("2006-01-02", req.EntryDate)
-			if err != nil {
-				http.Error(w, "entry_date must be in YYYY-MM-DD format", http.StatusBadRequest)
+			if value == "" {
+				data.Error = "value is required"
+				tmpl.Execute(w, data)
 				return
 			}
-			entryDate = parsed
-		}
 
-		params := sqlc.CreateEntryParams{
-			Value: numericValue,
-			EntryDate: pgtype.Date{
-				Time:  entryDate,
+			val, ok := new(big.Float).SetString(value)
+			if !ok {
+				data.Error = "value must be a valid decimal number"
+				tmpl.Execute(w, data)
+				return
+			}
+
+			val100, _ := new(big.Float).Mul(val, big.NewFloat(100)).Int(nil)
+			numericValue := pgtype.Numeric{
+				Int:   val100,
+				Exp:   -2,
 				Valid: true,
-			},
-			Note: req.Note,
+			}
+
+			entryTime := time.Now()
+			if entryDate != "" {
+				parsed, err := time.Parse("2006-01-02", entryDate)
+				if err != nil {
+					data.Error = "date must be in YYYY-MM-DD format"
+					tmpl.Execute(w, data)
+					return
+				}
+				entryTime = parsed
+			}
+
+			params := sqlc.CreateEntryParams{
+				Value: numericValue,
+				EntryDate: pgtype.Date{
+					Time:  entryTime,
+					Valid: true,
+				},
+				Note: note,
+			}
+
+			_, err := q.CreateEntry(r.Context(), params)
+			if err != nil {
+				data.Error = "failed to create entry"
+				http.Error(w, data.Error, http.StatusInternalServerError)
+				return
+			}
+
+			http.Redirect(w, r, "/?saved=1", http.StatusSeeOther)
+
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
-
-		id, err := q.CreateEntry(r.Context(), params)
-		if err != nil {
-			http.Error(w, "failed to create entry", http.StatusInternalServerError)
-			return
-		}
-
-		resp := createEntryResponse{ID: id}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(resp)
 	})
 }

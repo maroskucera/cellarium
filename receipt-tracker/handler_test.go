@@ -18,11 +18,12 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/maroskucera/cellarium/receipt-tracker/db/sqlc"
 )
@@ -43,108 +44,155 @@ func newStubQuerier() *stubQuerier {
 	return &stubQuerier{id: 1}
 }
 
-func TestHandleCreateEntry(t *testing.T) {
-	t.Run("valid request with all fields", func(t *testing.T) {
-		stub := newStubQuerier()
-		handler := handleCreateEntry(stub)
+const testTemplate = `<form>{{if .Error}}<p class="error">{{.Error}}</p>{{end}}{{if .Success}}<p class="success">Entry saved</p>{{end}}<input name="value" value="{{.Value}}"><input name="entry_date" value="{{if .EntryDate}}{{.EntryDate}}{{else}}{{.Today}}{{end}}"><input name="note" value="{{.Note}}"></form>`
 
-		body := `{"value":"42.50","entry_date":"2026-03-14","note":"groceries"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/entries", strings.NewReader(body))
-		req.Header.Set("Content-Type", "application/json")
+func newTestHandler(stub *stubQuerier) http.Handler {
+	tmpl := template.Must(template.New("form").Parse(testTemplate))
+	return handleRoot(stub, tmpl)
+}
+
+func TestHandleRoot(t *testing.T) {
+	t.Run("GET renders form with today's date", func(t *testing.T) {
+		handler := newTestHandler(newStubQuerier())
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		w := httptest.NewRecorder()
 
 		handler.ServeHTTP(w, req)
 
-		if w.Code != http.StatusCreated {
-			t.Fatalf("got status %d, want %d", w.Code, http.StatusCreated)
+		if w.Code != http.StatusOK {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
 		}
 
-		var resp createEntryResponse
-		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-			t.Fatalf("failed to decode response: %v", err)
+		body := w.Body.String()
+		if !strings.Contains(body, "<form>") {
+			t.Error("response does not contain <form>")
 		}
-		if resp.ID != 1 {
-			t.Errorf("got ID %d, want 1", resp.ID)
+
+		today := time.Now().Format("2006-01-02")
+		if !strings.Contains(body, today) {
+			t.Errorf("response does not contain today's date %s", today)
 		}
 	})
 
-	t.Run("valid request with only value defaults date and note", func(t *testing.T) {
-		stub := newStubQuerier()
-		handler := handleCreateEntry(stub)
+	t.Run("GET with saved=1 shows success message", func(t *testing.T) {
+		handler := newTestHandler(newStubQuerier())
 
-		body := `{"value":"10.00"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/entries", strings.NewReader(body))
-		req.Header.Set("Content-Type", "application/json")
+		req := httptest.NewRequest(http.MethodGet, "/?saved=1", nil)
 		w := httptest.NewRecorder()
 
 		handler.ServeHTTP(w, req)
 
-		if w.Code != http.StatusCreated {
-			t.Fatalf("got status %d, want %d", w.Code, http.StatusCreated)
+		if w.Code != http.StatusOK {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
 		}
 
-		var resp createEntryResponse
-		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-			t.Fatalf("failed to decode response: %v", err)
-		}
-		if resp.ID != 1 {
-			t.Errorf("got ID %d, want 1", resp.ID)
+		body := w.Body.String()
+		if !strings.Contains(body, "Entry saved") {
+			t.Error("response does not contain success message")
 		}
 	})
 
-	t.Run("missing value returns 400", func(t *testing.T) {
-		stub := newStubQuerier()
-		handler := handleCreateEntry(stub)
+	t.Run("POST valid form redirects with saved=1", func(t *testing.T) {
+		handler := newTestHandler(newStubQuerier())
 
-		body := `{"note":"no value"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/entries", strings.NewReader(body))
-		req.Header.Set("Content-Type", "application/json")
+		body := "value=42.50&entry_date=2026-03-14&note=groceries"
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		w := httptest.NewRecorder()
 
 		handler.ServeHTTP(w, req)
 
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("got status %d, want %d", w.Code, http.StatusBadRequest)
+		if w.Code != http.StatusSeeOther {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusSeeOther)
+		}
+
+		loc := w.Header().Get("Location")
+		if loc != "/?saved=1" {
+			t.Errorf("got Location %q, want %q", loc, "/?saved=1")
 		}
 	})
 
-	t.Run("non-numeric value returns 400", func(t *testing.T) {
-		stub := newStubQuerier()
-		handler := handleCreateEntry(stub)
+	t.Run("POST with only value defaults date and redirects", func(t *testing.T) {
+		handler := newTestHandler(newStubQuerier())
 
-		body := `{"value":"abc"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/entries", strings.NewReader(body))
-		req.Header.Set("Content-Type", "application/json")
+		body := "value=10.00"
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		w := httptest.NewRecorder()
 
 		handler.ServeHTTP(w, req)
 
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("got status %d, want %d", w.Code, http.StatusBadRequest)
+		if w.Code != http.StatusSeeOther {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusSeeOther)
 		}
 	})
 
-	t.Run("invalid date format returns 400", func(t *testing.T) {
-		stub := newStubQuerier()
-		handler := handleCreateEntry(stub)
+	t.Run("POST missing value shows error", func(t *testing.T) {
+		handler := newTestHandler(newStubQuerier())
 
-		body := `{"value":"10.00","entry_date":"14/03/2026"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/entries", strings.NewReader(body))
-		req.Header.Set("Content-Type", "application/json")
+		body := "note=novalue"
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		w := httptest.NewRecorder()
 
 		handler.ServeHTTP(w, req)
 
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("got status %d, want %d", w.Code, http.StatusBadRequest)
+		if w.Code != http.StatusOK {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
+		}
+
+		respBody := w.Body.String()
+		if !strings.Contains(respBody, "value is required") {
+			t.Error("response does not contain error about missing value")
+		}
+		if !strings.Contains(respBody, "novalue") {
+			t.Error("response does not preserve note field")
 		}
 	})
 
-	t.Run("wrong HTTP method returns 405", func(t *testing.T) {
-		stub := newStubQuerier()
-		handler := handleCreateEntry(stub)
+	t.Run("POST non-numeric value shows error", func(t *testing.T) {
+		handler := newTestHandler(newStubQuerier())
 
-		req := httptest.NewRequest(http.MethodGet, "/api/entries", nil)
+		body := "value=abc"
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
+		}
+
+		if !strings.Contains(w.Body.String(), "valid decimal number") {
+			t.Error("response does not contain error about invalid number")
+		}
+	})
+
+	t.Run("POST invalid date shows error", func(t *testing.T) {
+		handler := newTestHandler(newStubQuerier())
+
+		body := "value=10.00&entry_date=14/03/2026"
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
+		}
+
+		if !strings.Contains(w.Body.String(), "YYYY-MM-DD") {
+			t.Error("response does not contain date format error")
+		}
+	})
+
+	t.Run("PUT returns 405", func(t *testing.T) {
+		handler := newTestHandler(newStubQuerier())
+
+		req := httptest.NewRequest(http.MethodPut, "/", nil)
 		w := httptest.NewRecorder()
 
 		handler.ServeHTTP(w, req)

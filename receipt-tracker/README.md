@@ -1,6 +1,6 @@
 # Receipt Tracker
 
-A mobile-first PWA for quickly logging numeric values from paper receipts. Runs inside a Tailscale tailnet (no auth needed). Write-only — reading/querying is done via direct database access.
+A mobile-first server-rendered form for quickly logging numeric values from paper receipts. Runs inside a Tailscale tailnet (no auth needed). Write-only — reading/querying is done via direct database access.
 
 ## Prerequisites
 
@@ -31,35 +31,9 @@ A mobile-first PWA for quickly logging numeric values from paper receipts. Runs 
    go run .
    ```
 
-## API
+## Usage
 
-### POST /api/entries
-
-Create a receipt entry.
-
-**Request:**
-```json
-{
-  "value": "42.50",
-  "entry_date": "2026-03-14",
-  "note": "groceries"
-}
-```
-
-- `value` (required): Decimal amount as string
-- `entry_date` (optional): Date in `YYYY-MM-DD` format, defaults to today
-- `note` (optional): Free-text note
-
-**Response (201 Created):**
-```json
-{
-  "id": 1,
-  "value": "42.50",
-  "entry_date": "2026-03-14",
-  "note": "groceries",
-  "created_at": "2026-03-14T12:00:00Z"
-}
-```
+Open `http://localhost:8080` in a browser. Fill in the amount (required), date (defaults to today), and an optional note, then submit. The form uses the Post-Redirect-Get pattern — after a successful submission you'll see a confirmation message.
 
 ## Build
 
@@ -67,7 +41,7 @@ Create a receipt entry.
 go build -o receipt-tracker .
 ```
 
-Produces a single static binary with the frontend embedded.
+Produces a single static binary with templates and CSS embedded.
 
 ## Deployment
 

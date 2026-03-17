@@ -170,7 +170,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	mux.Handle("/frontend/", http.StripPrefix("/frontend/", http.FileServerFS(frontendSub)))
+	mux.Handle("GET /frontend/", http.StripPrefix("/frontend/", http.FileServerFS(frontendSub)))
 
 	srv := &http.Server{
 		Addr:    listenAddr,

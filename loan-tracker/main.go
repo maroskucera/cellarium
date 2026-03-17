@@ -1,4 +1,4 @@
-// Cellarium Receipt Tracker — a mobile-first form for logging receipt values
+// Cellarium Loan Tracker — a web app for tracking loan repayment
 // Copyright (C) 2026 Maroš Kučera
 //
 // This program is free software: you can redistribute it and/or modify
@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -35,17 +36,17 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/maroskucera/cellarium/receipt-tracker/db/sqlc"
+	"github.com/maroskucera/cellarium/loan-tracker/db/sqlc"
 )
 
-//go:embed templates/form.html
-var formTemplate string
-
-//go:embed static
-var staticFS embed.FS
+//go:embed frontend/*
+var frontendFS embed.FS
 
 //go:embed db/migrations/*.sql
 var migrationsFS embed.FS
+
+//go:embed templates/*
+var templatesFS embed.FS
 
 func loadEnvFromCwd() {
 	appDir, err := os.Getwd()
@@ -63,9 +64,9 @@ func newMigrate(dbURL string) (*migrate.Migrate, error) {
 	}
 	migrateURL := "pgx5://" + dbURL[len("postgres://"):]
 	if strings.Contains(migrateURL, "?") {
-		migrateURL += "&x-migrations-table=receipt_tracker_schema_migrations"
+		migrateURL += "&x-migrations-table=loan_tracker_schema_migrations"
 	} else {
-		migrateURL += "?x-migrations-table=receipt_tracker_schema_migrations"
+		migrateURL += "?x-migrations-table=loan_tracker_schema_migrations"
 	}
 	return migrate.NewWithSourceInstance("iofs", source, migrateURL)
 }
@@ -91,7 +92,6 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "-migrate" {
 		args := os.Args[2:]
 
-		// Load env and get DATABASE_URL early for migrate commands.
 		loadEnvFromCwd()
 
 		dbURL := os.Getenv("DATABASE_URL")
@@ -142,7 +142,6 @@ func main() {
 		return
 	}
 
-	// Load env files for normal server startup.
 	loadEnvFromCwd()
 
 	dbURL := os.Getenv("DATABASE_URL")
@@ -152,7 +151,7 @@ func main() {
 
 	listenAddr := os.Getenv("LISTEN_ADDR")
 	if listenAddr == "" {
-		listenAddr = ":8080"
+		listenAddr = ":8082"
 	}
 
 	ctx := context.Background()
@@ -163,11 +162,22 @@ func main() {
 	defer pool.Close()
 
 	queries := sqlc.New(pool)
-	tmpl := template.Must(template.New("form").Parse(formTemplate))
+
+	tmpl, err := template.ParseFS(templatesFS, "templates/*.html")
+	if err != nil {
+		log.Fatalf("failed to parse templates: %v", err)
+	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", handleRoot(queries, tmpl))
-	mux.Handle("/static/", http.FileServerFS(staticFS))
+	mux.Handle("GET /", handleIndex(queries, tmpl))
+	mux.Handle("POST /setup", handleSetup(queries))
+	mux.Handle("POST /payment", handlePayment(queries))
+
+	frontendSub, err := fs.Sub(frontendFS, "frontend")
+	if err != nil {
+		log.Fatal(err)
+	}
+	mux.Handle("GET /frontend/", http.StripPrefix("/frontend/", http.FileServerFS(frontendSub)))
 
 	srv := &http.Server{
 		Addr:    listenAddr,

@@ -1,0 +1,277 @@
+/*
+ * Cellarium Loan Tracker — stylesheet
+ * Copyright (C) 2026 Maroš Kučera
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --border: #0f3460;
+    --text: #e6e6e6;
+    --text-muted: #a0a0b0;
+    --accent: #e94560;
+    --accent-hover: #ff6b81;
+    --success: #4caf50;
+    --progress-bg: #2a2a4a;
+    --progress-fill: #4caf50;
+    --milestone: #a0a0b0;
+}
+
+body {
+    margin: 0;
+    padding: 1rem;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+}
+
+main {
+    max-width: 540px;
+    margin: 0 auto;
+}
+
+h1 {
+    text-align: center;
+    margin: 0 0 0.25rem;
+    color: var(--accent);
+    font-size: 1.5rem;
+}
+
+h2 {
+    margin: 1.5rem 0 0.75rem;
+    font-size: 1.1rem;
+    color: var(--text);
+}
+
+fieldset {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0 0 1rem;
+}
+
+legend {
+    font-weight: 600;
+    color: var(--accent);
+    padding: 0 0.5rem;
+}
+
+label {
+    display: block;
+    margin: 0.75rem 0 0.25rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+input[type="text"],
+input[type="date"] {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+input[type="text"]:focus,
+input[type="date"]:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+button[type="submit"] {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1rem;
+}
+
+button[type="submit"]:hover {
+    background: var(--accent-hover);
+}
+
+.payment-row {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.payment-row:last-child {
+    border-bottom: none;
+}
+
+/* Stats */
+
+.stats {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+}
+
+.stats h2 {
+    margin-top: 0;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    color: var(--text-muted);
+}
+
+.stat-value {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Progress bar */
+
+.progress-container {
+    margin: 1rem 0;
+}
+
+.progress-bar {
+    position: relative;
+    height: 28px;
+    background: var(--progress-bg);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--progress-fill);
+    border-radius: 14px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.milestone {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 2px;
+    background: var(--milestone);
+    opacity: 0.4;
+}
+
+.milestone span {
+    position: absolute;
+    top: -1.4rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.milestone-25 { left: 25%; }
+.milestone-50 { left: 50%; }
+.milestone-75 { left: 75%; }
+
+.progress-label {
+    text-align: center;
+    margin-top: 0.4rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+/* Payment history */
+
+.payment-history {
+    margin: 1rem 0 2rem;
+}
+
+.payment-history summary {
+    cursor: pointer;
+    padding: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.payment-history[open] summary {
+    border-radius: 8px 8px 0 0;
+    border-bottom: none;
+}
+
+.payment-history table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+}
+
+.payment-history th,
+.payment-history td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.payment-history th {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.payment-history td:last-child,
+.payment-history th:last-child {
+    text-align: right;
+}
+
+.payment-history tr:last-child td {
+    border-bottom: none;
+}
+
+.payment-history p {
+    padding: 0.75rem;
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    color: var(--text-muted);
+}

@@ -29,6 +29,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -61,7 +62,13 @@ func newMigrate(dbURL string) (*migrate.Migrate, error) {
 	if err != nil {
 		return nil, err
 	}
-	return migrate.NewWithSourceInstance("iofs", source, "pgx5://"+dbURL[len("postgres://"):])
+	migrateURL := "pgx5://" + dbURL[len("postgres://"):]
+	if strings.Contains(migrateURL, "?") {
+		migrateURL += "&x-migrations-table=loan_tracker_schema_migrations"
+	} else {
+		migrateURL += "?x-migrations-table=loan_tracker_schema_migrations"
+	}
+	return migrate.NewWithSourceInstance("iofs", source, migrateURL)
 }
 
 func runMigrations(dbURL string, steps int) error {

@@ -41,6 +41,9 @@ import (
 //go:embed templates/form.html
 var formTemplate string
 
+//go:embed templates/paid.html
+var paidTemplate string
+
 //go:embed static
 var staticFS embed.FS
 
@@ -164,9 +167,11 @@ func main() {
 
 	queries := sqlc.New(pool)
 	tmpl := template.Must(template.New("form").Parse(formTemplate))
+	paidTmpl := template.Must(template.New("paid").Parse(paidTemplate))
 
 	mux := http.NewServeMux()
 	mux.Handle("/", handleRoot(queries, tmpl))
+	mux.Handle("/paid", handlePaid(queries, paidTmpl))
 	mux.Handle("/static/", http.FileServerFS(staticFS))
 
 	srv := &http.Server{

@@ -79,7 +79,7 @@ label {
   margin-bottom: 0.35rem;
 }
 
-input {
+input:not([type="checkbox"]) {
   width: 100%;
   max-width: 100%;
   padding: 1rem;
@@ -95,11 +95,11 @@ input {
   appearance: none;
 }
 
-input:focus {
+input:not([type="checkbox"]):focus {
   border-color: var(--accent);
 }
 
-input::placeholder {
+input:not([type="checkbox"])::placeholder {
   color: var(--text-muted);
   opacity: 0.5;
 }
@@ -155,4 +155,89 @@ button[type="submit"]:disabled {
 .message.error {
   background: var(--error);
   color: #fff;
+}
+
+/* Navigation link */
+.nav-link {
+  display: block;
+  text-align: center;
+  margin-top: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  color: var(--text);
+}
+
+/* Paid page — desktop-optimized */
+.paid-page main {
+  max-width: 900px;
+}
+
+.paid-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+
+.paid-table th,
+.paid-table td {
+  padding: 0.6rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--primary);
+}
+
+.paid-table th {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+
+.paid-table .col-check {
+  width: 3rem;
+  text-align: center;
+}
+
+.paid-table .batch-header td {
+  font-weight: 700;
+  background: var(--surface);
+  border-bottom: 2px solid var(--primary);
+}
+
+.paid-table input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.paid-page button[type="submit"] {
+  width: 100%;
+  padding: 0.9rem;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.paid-page button[type="submit"]:hover {
+  opacity: 0.9;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  padding: 3rem 0;
 }

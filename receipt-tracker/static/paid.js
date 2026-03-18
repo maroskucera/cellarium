@@ -1,0 +1,44 @@
+/*
+ * Cellarium Receipt Tracker — checkbox toggle logic for mark-as-paid page
+ * Copyright (C) 2026 Maroš Kučera
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+document.addEventListener("DOMContentLoaded", function () {
+  var batchToggles = document.querySelectorAll(".batch-toggle");
+
+  function updateBatchToggle(batch) {
+    var entries = document.querySelectorAll('.entry-cb[data-batch="' + batch + '"]');
+    var toggle = document.querySelector('.batch-toggle[data-batch="' + batch + '"]');
+    if (!toggle) return;
+    toggle.checked = Array.prototype.every.call(entries, function (cb) {
+      return cb.checked;
+    });
+  }
+
+  batchToggles.forEach(function (batchCb) {
+    batchCb.addEventListener("change", function () {
+      var batch = batchCb.dataset.batch;
+      var entries = document.querySelectorAll('.entry-cb[data-batch="' + batch + '"]');
+      entries.forEach(function (cb) { cb.checked = batchCb.checked; });
+    });
+  });
+
+  document.querySelectorAll(".entry-cb").forEach(function (entryCb) {
+    entryCb.addEventListener("change", function () {
+      updateBatchToggle(entryCb.dataset.batch);
+    });
+  });
+});

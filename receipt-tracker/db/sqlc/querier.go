@@ -25,6 +25,8 @@ type Querier interface {
 	// You should have received a copy of the GNU General Public License
 	// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 	CreateEntry(ctx context.Context, arg CreateEntryParams) (int64, error)
+	ListUnpaidEntries(ctx context.Context) ([]ListUnpaidEntriesRow, error)
+	MarkEntriesPaid(ctx context.Context, ids []int64) error
 }
 
 var _ Querier = (*Queries)(nil)

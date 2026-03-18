@@ -60,3 +60,53 @@ func (q *Queries) CreateEntry(ctx context.Context, arg CreateEntryParams) (int64
 	err := row.Scan(&id)
 	return id, err
 }
+
+const listUnpaidEntries = `-- name: ListUnpaidEntries :many
+SELECT id, value, entry_date, batch
+FROM receipts.entries
+WHERE paid = FALSE
+ORDER BY batch ASC, entry_date ASC, id ASC
+`
+
+type ListUnpaidEntriesRow struct {
+	ID        int64          `json:"id"`
+	Value     pgtype.Numeric `json:"value"`
+	EntryDate pgtype.Date    `json:"entry_date"`
+	Batch     int32          `json:"batch"`
+}
+
+func (q *Queries) ListUnpaidEntries(ctx context.Context) ([]ListUnpaidEntriesRow, error) {
+	rows, err := q.db.Query(ctx, listUnpaidEntries)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUnpaidEntriesRow
+	for rows.Next() {
+		var i ListUnpaidEntriesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Value,
+			&i.EntryDate,
+			&i.Batch,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markEntriesPaid = `-- name: MarkEntriesPaid :exec
+UPDATE receipts.entries
+SET paid = TRUE
+WHERE id = ANY($1::bigint[])
+`
+
+func (q *Queries) MarkEntriesPaid(ctx context.Context, ids []int64) error {
+	_, err := q.db.Exec(ctx, markEntriesPaid, ids)
+	return err
+}

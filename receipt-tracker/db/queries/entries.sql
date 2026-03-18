@@ -33,3 +33,14 @@ INSERT INTO receipts.entries (value, entry_date, note, batch, paid)
 SELECT @value, @entry_date, @note, nb.batch, FALSE
 FROM next_batch nb
 RETURNING id;
+
+-- name: ListUnpaidEntries :many
+SELECT id, value, entry_date, batch
+FROM receipts.entries
+WHERE paid = FALSE
+ORDER BY batch ASC, entry_date ASC, id ASC;
+
+-- name: MarkEntriesPaid :exec
+UPDATE receipts.entries
+SET paid = TRUE
+WHERE id = ANY(@ids::bigint[]);

@@ -1,0 +1,79 @@
+<!--
+Cellarium Pockets — new account form template
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "account_new"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+    <title>New Account — Pockets</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main>
+        <header class="site-header">
+            <a href="/" class="site-title">Pockets</a>
+        </header>
+        <h1>New Account</h1>
+
+        <form method="POST" action="/accounts">
+            <fieldset>
+                <legend>Account Details</legend>
+
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" required>
+
+                <label for="icon">Icon</label>
+                <input type="text" id="icon" name="icon" required maxlength="2"
+                       placeholder="e.g. 🏠">
+
+                <label>Colour</label>
+                <div class="colour-picker" role="radiogroup" aria-label="Account colour">
+                    {{range .Colours}}
+                    <label class="colour-swatch">
+                        <input type="radio" name="colour" value="{{.Key}}"{{if eq .Key "steel"}} checked{{end}}>
+                        <span class="swatch" style="background: {{.Hex}}" title="{{.Name}}"></span>
+                        <span class="colour-name">{{.Name}}</span>
+                    </label>
+                    {{end}}
+                </div>
+
+                <label for="target_amount">Target Amount (optional)</label>
+                <input type="text" id="target_amount" name="target_amount"
+                       inputmode="decimal" placeholder="e.g. 5000.00">
+
+                <label for="initial_balance">Initial Balance (optional)</label>
+                <input type="text" id="initial_balance" name="initial_balance"
+                       inputmode="decimal" placeholder="e.g. 1000.00">
+
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_reserve" value="true">
+                        <span>Reserve account (pre-selected for new transactions)</span>
+                    </label>
+                </div>
+            </fieldset>
+
+            <button type="submit">Create Account</button>
+        </form>
+    </main>
+</body>
+</html>
+{{end}}

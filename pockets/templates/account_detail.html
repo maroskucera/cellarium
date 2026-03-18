@@ -1,0 +1,87 @@
+<!--
+Cellarium Pockets — account detail with transaction list
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "account_detail"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+    <title>{{.Account.Name}} — Pockets</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main>
+        <header class="site-header">
+            <a href="/" class="site-title">Pockets</a>
+        </header>
+        <div class="account-header" style="border-left-color: {{.Account.ColourHex}}">
+            <h1><span class="account-icon">{{.Account.Icon}}</span> {{.Account.Name}}</h1>
+            <div class="account-balance">{{.Balance}}</div>
+            {{if .Account.HasTarget}}
+            <div class="account-target">
+                <div class="progress-bar-sm">
+                    <div class="progress-fill-sm" style="width: {{.TargetPercent}}%"></div>
+                </div>
+                <span class="target-label">{{.TargetPercent}}% of {{.Account.TargetAmount}}</span>
+            </div>
+            {{end}}
+        </div>
+
+        {{template "account_nav" .Nav}}
+
+        <div class="section-actions">
+            <a href="/accounts/{{.Account.ID}}/transactions/new" class="btn">New Transaction</a>
+        </div>
+
+        <nav class="filter-tabs" aria-label="Transaction filters">
+            <a href="/accounts/{{.Account.ID}}?filter=all"{{if eq .Filter "all"}} class="active" aria-current="page"{{end}}>All</a>
+            <a href="/accounts/{{.Account.ID}}?filter=topups"{{if eq .Filter "topups"}} class="active" aria-current="page"{{end}}>Top-ups</a>
+            <a href="/accounts/{{.Account.ID}}?filter=auto"{{if eq .Filter "auto"}} class="active" aria-current="page"{{end}}>Auto</a>
+            <a href="/accounts/{{.Account.ID}}?filter=withdrawals"{{if eq .Filter "withdrawals"}} class="active" aria-current="page"{{end}}>Withdrawals</a>
+        </nav>
+
+        {{if .Transactions}}
+        <table class="txn-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Note</th>
+                    <th><span class="sr-only">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Transactions}}
+                <tr>
+                    <td>{{.Date}}</td>
+                    <td class="{{if .IsInflow}}txn-inflow{{else}}txn-outflow{{end}}"{{if .Note}} title="{{.Note}}"{{end}}>{{.DisplayAmount}}</td>
+                    <td class="txn-note">{{.Note}}</td>
+                    <td><a href="/accounts/{{$.Account.ID}}/transactions/{{.ID}}/edit" class="edit-link">Edit</a></td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p class="empty-state">No transactions found.</p>
+        {{end}}
+    </main>
+</body>
+</html>
+{{end}}

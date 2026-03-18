@@ -1,0 +1,81 @@
+<!--
+Cellarium Pockets — top-up rules management template
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "topup_rules"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+    <title>Top-up Rules — {{.Account.Name}} — Pockets</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main>
+        <header class="site-header">
+            <a href="/" class="site-title">Pockets</a>
+        </header>
+        <h1>Top-up Rules — {{.Account.Name}}</h1>
+
+        {{template "account_nav" .Nav}}
+
+        <form method="POST" action="/accounts/{{.Account.ID}}/topups">
+            <fieldset>
+                <legend>New Rule</legend>
+
+                <label for="amount">Monthly Amount</label>
+                <input type="text" id="amount" name="amount" inputmode="decimal" required>
+
+                <label for="effective_date">Effective From</label>
+                <input type="date" id="effective_date" name="effective_date" value="{{.TodayStr}}" required>
+            </fieldset>
+
+            <button type="submit">Add Rule</button>
+        </form>
+
+        {{if .Rules}}
+        <table class="rules-table">
+            <thead>
+                <tr>
+                    <th>Amount</th>
+                    <th>Effective From</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Rules}}
+                <tr>
+                    <td>{{.Amount}}</td>
+                    <td>{{.EffectiveDate}}</td>
+                    <td>
+                        <form method="POST" action="/accounts/{{$.Account.ID}}/topups/{{.ID}}/delete" class="inline-form">
+                            <button type="submit" class="btn-danger-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p class="empty-state">No top-up rules set. Add a rule to enable automatic monthly top-ups.</p>
+        {{end}}
+    </main>
+</body>
+</html>
+{{end}}

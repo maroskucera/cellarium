@@ -1,0 +1,64 @@
+<!--
+Cellarium Pockets — per-account forecast template
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "forecast"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+    <title>Forecast — {{.Account.Name}} — Pockets</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main>
+        <header class="site-header">
+            <a href="/" class="site-title">Pockets</a>
+        </header>
+        <h1>Forecast — {{.Account.Name}}</h1>
+
+        {{template "account_nav" .Nav}}
+
+        <div class="forecast-toggle">
+            <a href="/accounts/{{.Account.ID}}/forecast?months=6"{{if eq .Months 6}} class="active"{{end}}>6 months</a>
+            <a href="/accounts/{{.Account.ID}}/forecast?months=12"{{if eq .Months 12}} class="active"{{end}}>12 months</a>
+        </div>
+
+        <table class="forecast-table">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Projected Balance</th>
+                    {{if .Account.HasTarget}}<th>% of Target</th>{{end}}
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Rows}}
+                <tr>
+                    <td>{{.Month}}</td>
+                    <td>{{.Balance}}</td>
+                    {{if $.Account.HasTarget}}<td>{{.TargetPercent}}%</td>{{end}}
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </main>
+</body>
+</html>
+{{end}}

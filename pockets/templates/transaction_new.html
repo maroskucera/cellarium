@@ -1,0 +1,76 @@
+<!--
+Cellarium Pockets — new transaction form template
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "transaction_new"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+    <title>New Transaction — Pockets</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main>
+        <header class="site-header">
+            <a href="/" class="site-title">Pockets</a>
+        </header>
+        <h1>New Transaction</h1>
+
+        <form method="POST" action="{{.FormAction}}">
+            <fieldset>
+                <legend>Transaction Details</legend>
+
+                {{if .ShowAccountSelect}}
+                <label for="account_id">Account</label>
+                <select id="account_id" name="account_id" required>
+                    {{range .Accounts}}
+                    <option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Icon}} {{.Name}}</option>
+                    {{end}}
+                </select>
+                {{end}}
+
+                <label for="amount">Amount</label>
+                <input type="text" id="amount" name="amount" inputmode="decimal" required>
+
+                <label>Direction</label>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="direction" value="out" checked>
+                        <span>Out</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="direction" value="in">
+                        <span>In</span>
+                    </label>
+                </div>
+
+                <label for="tx_date">Date</label>
+                <input type="date" id="tx_date" name="tx_date" value="{{.TodayStr}}" required>
+
+                <label for="note">Note (optional)</label>
+                <input type="text" id="note" name="note">
+            </fieldset>
+
+            <button type="submit">Create Transaction</button>
+        </form>
+    </main>
+</body>
+</html>
+{{end}}

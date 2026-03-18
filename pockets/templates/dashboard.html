@@ -1,0 +1,66 @@
+<!--
+Cellarium Pockets — dashboard page template
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "dashboard"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+    <title>Pockets</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main>
+        <header class="site-header">
+            <a href="/" class="site-title">Pockets</a>
+        </header>
+        <div class="dashboard-actions">
+            <a href="/accounts/new" class="btn">New Account</a>
+            {{if .Accounts}}<a href="/transactions/new" class="btn btn-secondary">New Transaction</a>
+            <a href="/forecast" class="btn btn-secondary">Forecast</a>{{end}}
+        </div>
+
+        {{if .Accounts}}
+        <div class="account-cards">
+            {{range .Accounts}}
+            <a href="/accounts/{{.ID}}" class="account-card" style="border-left-color: {{.ColourHex}}">
+                <div class="account-card-header">
+                    <span class="account-icon">{{.Icon}}</span>
+                    <span class="account-name">{{.Name}}</span>
+                </div>
+                <div class="account-card-balance">{{.Balance}}</div>
+                {{if .HasTarget}}
+                <div class="account-card-target">
+                    <div class="progress-bar-sm">
+                        <div class="progress-fill-sm" style="width: {{.TargetPercent}}%"></div>
+                    </div>
+                    <span class="target-label">{{.TargetPercent}}% of {{.Target}}</span>
+                </div>
+                {{end}}
+            </a>
+            {{end}}
+        </div>
+        {{else}}
+        <p class="empty-state">No accounts yet. Create your first account to get started.</p>
+        {{end}}
+    </main>
+</body>
+</html>
+{{end}}

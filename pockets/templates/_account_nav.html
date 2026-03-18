@@ -1,0 +1,25 @@
+<!--
+Cellarium Pockets — per-account sub-navigation partial
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "account_nav"}}
+<nav class="account-nav" aria-label="Account sections">
+    <a href="/accounts/{{.AccountID}}"{{if eq .Active "transactions"}} class="active" aria-current="page"{{end}}>Transactions</a>
+    <a href="/accounts/{{.AccountID}}/topups"{{if eq .Active "topups"}} class="active" aria-current="page"{{end}}>Top-ups</a>
+    <a href="/accounts/{{.AccountID}}/forecast"{{if eq .Active "forecast"}} class="active" aria-current="page"{{end}}>Forecast</a>
+    <a href="/accounts/{{.AccountID}}/edit"{{if eq .Active "edit"}} class="active" aria-current="page"{{end}}>Edit</a>
+</nav>
+{{end}}

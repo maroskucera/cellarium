@@ -23,17 +23,35 @@
 }
 
 :root {
-    --bg: #1a1a2e;
-    --surface: #16213e;
-    --border: #0f3460;
-    --text: #e6e6e6;
-    --text-muted: #a0a0b0;
-    --accent: #e94560;
-    --accent-hover: #ff6b81;
-    --success: #4caf50;
-    --progress-bg: #2a2a4a;
-    --progress-fill: #4caf50;
-    --milestone: #a0a0b0;
+    --bg: #ffffff;
+    --text: #000000;
+    --text-muted: #595959;
+    --border: #000000;
+    --btn-bg: #000000;
+    --btn-text: #ffffff;
+    --btn-hover-bg: #ffffff;
+    --btn-hover-text: #000000;
+    --focus-outline: #000000;
+    --progress-bg: #e0e0e0;
+    --progress-fill: #000000;
+    --milestone: #595959;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #000000;
+        --text: #ffffff;
+        --text-muted: #a6a6a6;
+        --border: #ffffff;
+        --btn-bg: #ffffff;
+        --btn-text: #000000;
+        --btn-hover-bg: #000000;
+        --btn-hover-text: #ffffff;
+        --focus-outline: #ffffff;
+        --progress-bg: #333333;
+        --progress-fill: #ffffff;
+        --milestone: #a6a6a6;
+    }
 }
 
 body {
@@ -53,8 +71,9 @@ main {
 h1 {
     text-align: center;
     margin: 0 0 0.25rem;
-    color: var(--accent);
+    color: var(--text);
     font-size: 1.5rem;
+    font-weight: 700;
 }
 
 h2 {
@@ -65,14 +84,14 @@ h2 {
 
 fieldset {
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 1rem;
     margin: 0 0 1rem;
 }
 
 legend {
     font-weight: 600;
-    color: var(--accent);
+    color: var(--text);
     padding: 0 0.5rem;
 }
 
@@ -81,6 +100,8 @@ label {
     margin: 0.75rem 0 0.25rem;
     font-size: 0.875rem;
     color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
 }
 
 input[type="text"],
@@ -88,35 +109,47 @@ input[type="date"] {
     width: 100%;
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface);
+    border-radius: 0;
+    background: var(--bg);
     color: var(--text);
     font-size: 1rem;
     font-family: inherit;
+    min-height: 44px;
+}
+
+input[type="text"]::placeholder {
+    color: var(--text-muted);
 }
 
 input[type="text"]:focus,
 input[type="date"]:focus {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
 }
 
 button[type="submit"] {
     display: block;
     width: 100%;
     padding: 0.75rem;
-    border: none;
-    border-radius: 8px;
-    background: var(--accent);
-    color: #fff;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--btn-bg);
+    color: var(--btn-text);
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     margin-top: 1rem;
+    min-height: 44px;
 }
 
 button[type="submit"]:hover {
-    background: var(--accent-hover);
+    background: var(--btn-hover-bg);
+    color: var(--btn-hover-text);
+}
+
+button[type="submit"]:focus {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
 }
 
 .payment-row {
@@ -131,9 +164,9 @@ button[type="submit"]:hover {
 /* Stats */
 
 .stats {
-    background: var(--surface);
+    background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 1rem;
     margin: 1.5rem 0;
 }
@@ -172,14 +205,15 @@ button[type="submit"]:hover {
     position: relative;
     height: 28px;
     background: var(--progress-bg);
-    border-radius: 14px;
+    border-radius: 0;
     overflow: hidden;
+    border: 1px solid var(--border);
 }
 
 .progress-fill {
     height: 100%;
     background: var(--progress-fill);
-    border-radius: 14px;
+    border-radius: 0;
     min-width: 0;
     max-width: 100%;
 }
@@ -190,7 +224,7 @@ button[type="submit"]:hover {
     height: 100%;
     width: 2px;
     background: var(--milestone);
-    opacity: 0.4;
+    opacity: 0.6;
 }
 
 .milestone span {
@@ -223,25 +257,30 @@ button[type="submit"]:hover {
 .payment-history summary {
     cursor: pointer;
     padding: 0.75rem;
-    background: var(--surface);
+    background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     font-weight: 600;
     color: var(--text);
+    min-height: 44px;
+}
+
+.payment-history summary:focus {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
 }
 
 .payment-history[open] summary {
-    border-radius: 8px 8px 0 0;
     border-bottom: none;
 }
 
 .payment-history table {
     width: 100%;
     border-collapse: collapse;
-    background: var(--surface);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-top: none;
-    border-radius: 0 0 8px 8px;
+    border-radius: 0;
 }
 
 .payment-history th,
@@ -255,6 +294,8 @@ button[type="submit"]:hover {
     color: var(--text-muted);
     font-size: 0.875rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
 }
 
 .payment-history td:last-child,
@@ -269,9 +310,9 @@ button[type="submit"]:hover {
 .payment-history p {
     padding: 0.75rem;
     margin: 0;
-    background: var(--surface);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-top: none;
-    border-radius: 0 0 8px 8px;
+    border-radius: 0;
     color: var(--text-muted);
 }

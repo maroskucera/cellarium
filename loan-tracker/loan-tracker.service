@@ -1,0 +1,16 @@
+[Unit]
+Description=Cellarium Loan Tracker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/bin/loan-tracker
+Restart=on-failure
+RestartSec=5
+
+Environment=DATABASE_URL=postgres://localhost:5432/cellarium?sslmode=disable
+Environment=LISTEN_ADDR=:8082
+
+[Install]
+WantedBy=default.target

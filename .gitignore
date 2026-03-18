@@ -8,6 +8,7 @@
 # Go build output
 /receipt-tracker/receipt-tracker
 /loan-tracker/loan-tracker
+/pockets/pockets
 
 # Local environment overrides (may contain secrets)
 .env.local

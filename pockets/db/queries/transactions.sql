@@ -59,6 +59,12 @@ FROM pockets.transactions
 WHERE account_id = @account_id AND is_auto_topup = TRUE AND tx_date = @tx_date
 LIMIT 1;
 
+-- name: ListFutureTransactions :many
+SELECT id, account_id, amount, is_inflow, tx_date, note, is_auto_topup, user_edited, is_initial_balance, topup_rule_id, created_at
+FROM pockets.transactions
+WHERE account_id = @account_id AND tx_date > @after_date AND is_auto_topup = FALSE
+ORDER BY tx_date ASC, id ASC;
+
 -- name: UpdateAutoTopupAmount :exec
 UPDATE pockets.transactions
 SET amount = @amount, topup_rule_id = @topup_rule_id

@@ -21,6 +21,7 @@ import (
 	"math"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/maroskucera/cellarium/pockets/db/sqlc"
 )
 
@@ -63,9 +64,14 @@ func handleDashboard(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			}
 		}
 
+		today := pgtype.Date{Valid: true, Time: timeNow()}
+
 		var cards []accountCard
 		for _, a := range accounts {
-			bal, err := q.GetAccountBalance(ctx, a.ID)
+			bal, err := q.GetAccountBalanceAsOfDate(ctx, sqlc.GetAccountBalanceAsOfDateParams{
+				AccountID: a.ID,
+				AsOfDate:  today,
+			})
 			if err != nil {
 				http.Error(w, "database error", http.StatusInternalServerError)
 				return

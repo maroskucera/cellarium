@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/maroskucera/cellarium/pockets/db/sqlc"
 )
 
@@ -62,13 +63,30 @@ type forecastAllData struct {
 
 // computeForecast projects balances for future months based on current balance and topup rules.
 // rules must be sorted by effective_date ascending (as returned by ListTopupRules).
-func computeForecast(currentBalance float64, targetAmount float64, rules []sqlc.PocketsTopupRule, months int) []forecastRow {
+// futureTxns are already-entered transactions after today that should be applied at the correct months.
+func computeForecast(currentBalance float64, targetAmount float64, rules []sqlc.PocketsTopupRule, months int, futureTxns []sqlc.PocketsTransaction) []forecastRow {
 	now := timeNow()
 	balance := currentBalance
+	nowYear, nowMonth, _ := now.Date()
+
+	// Apply current-month future transactions to starting balance
+	// (transactions dated after today but still in the same calendar month)
+	for _, tx := range futureTxns {
+		txY, txM, _ := tx.TxDate.Time.Date()
+		if txY == nowYear && txM == nowMonth {
+			if tx.IsInflow {
+				balance += numericToFloat64(tx.Amount)
+			} else {
+				balance -= numericToFloat64(tx.Amount)
+			}
+		}
+	}
+
 	var rows []forecastRow
 
 	for i := 1; i <= months; i++ {
 		m := time.Date(now.Year(), now.Month()+time.Month(i), 1, 0, 0, 0, 0, time.UTC)
+		forecastYear, forecastMonth, _ := m.Date()
 
 		// Find applicable rule for this month
 		var ruleAmount float64
@@ -81,6 +99,18 @@ func computeForecast(currentBalance float64, targetAmount float64, rules []sqlc.
 		}
 
 		balance += ruleAmount
+
+		// Apply future transactions for this month
+		for _, tx := range futureTxns {
+			txY, txM, _ := tx.TxDate.Time.Date()
+			if txY == forecastYear && txM == forecastMonth {
+				if tx.IsInflow {
+					balance += numericToFloat64(tx.Amount)
+				} else {
+					balance -= numericToFloat64(tx.Amount)
+				}
+			}
+		}
 
 		row := forecastRow{
 			Month:   m.Format("January 2006"),
@@ -130,7 +160,20 @@ func handleAccountForecast(q sqlc.Querier, tmpl *template.Template) http.Handler
 			return
 		}
 
-		bal, err := q.GetAccountBalance(ctx, id)
+		today := pgtype.Date{Valid: true, Time: timeNow()}
+		bal, err := q.GetAccountBalanceAsOfDate(ctx, sqlc.GetAccountBalanceAsOfDateParams{
+			AccountID: id,
+			AsOfDate:  today,
+		})
+		if err != nil {
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+
+		futureTxns, err := q.ListFutureTransactions(ctx, sqlc.ListFutureTransactionsParams{
+			AccountID: id,
+			AfterDate: today,
+		})
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
@@ -141,7 +184,7 @@ func handleAccountForecast(q sqlc.Querier, tmpl *template.Template) http.Handler
 		if account.TargetAmount.Valid {
 			target = numericToFloat64(account.TargetAmount)
 		}
-		rows := computeForecast(numericToFloat64(bal), target, rules, months)
+		rows := computeForecast(numericToFloat64(bal), target, rules, months, futureTxns)
 
 		data := forecastData{
 			Months: months,
@@ -176,6 +219,8 @@ func handleAllForecast(q sqlc.Querier, tmpl *template.Template) http.Handler {
 		var forecasts []accountForecast
 		var displayAccounts []forecastAllAccount
 
+		today := pgtype.Date{Valid: true, Time: timeNow()}
+
 		for _, a := range accounts {
 			rules, err := q.ListTopupRules(ctx, a.ID)
 			if err != nil {
@@ -186,7 +231,19 @@ func handleAllForecast(q sqlc.Querier, tmpl *template.Template) http.Handler {
 				http.Error(w, "database error", http.StatusInternalServerError)
 				return
 			}
-			bal, err := q.GetAccountBalance(ctx, a.ID)
+			bal, err := q.GetAccountBalanceAsOfDate(ctx, sqlc.GetAccountBalanceAsOfDateParams{
+				AccountID: a.ID,
+				AsOfDate:  today,
+			})
+			if err != nil {
+				http.Error(w, "database error", http.StatusInternalServerError)
+				return
+			}
+
+			futureTxns, err := q.ListFutureTransactions(ctx, sqlc.ListFutureTransactionsParams{
+				AccountID: a.ID,
+				AfterDate: today,
+			})
 			if err != nil {
 				http.Error(w, "database error", http.StatusInternalServerError)
 				return
@@ -198,7 +255,7 @@ func handleAllForecast(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			}
 
 			info := forecastAllAccount{ID: a.ID, Name: a.Name, Icon: a.Icon}
-			rows := computeForecast(numericToFloat64(bal), target, rules, months)
+			rows := computeForecast(numericToFloat64(bal), target, rules, months, futureTxns)
 			forecasts = append(forecasts, accountForecast{info: info, rows: rows})
 			displayAccounts = append(displayAccounts, info)
 		}

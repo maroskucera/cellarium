@@ -184,7 +184,10 @@ func handleAccountDetail(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			return
 		}
 
-		bal, err := q.GetAccountBalance(ctx, id)
+		bal, err := q.GetAccountBalanceAsOfDate(ctx, sqlc.GetAccountBalanceAsOfDateParams{
+			AccountID: id,
+			AsOfDate:  pgtype.Date{Valid: true, Time: timeNow()},
+		})
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return

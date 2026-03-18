@@ -118,6 +118,50 @@ func (q *Queries) GetTransaction(ctx context.Context, id int64) (PocketsTransact
 	return i, err
 }
 
+const listFutureTransactions = `-- name: ListFutureTransactions :many
+SELECT id, account_id, amount, is_inflow, tx_date, note, is_auto_topup, user_edited, is_initial_balance, topup_rule_id, created_at
+FROM pockets.transactions
+WHERE account_id = $1 AND tx_date > $2 AND is_auto_topup = FALSE
+ORDER BY tx_date ASC, id ASC
+`
+
+type ListFutureTransactionsParams struct {
+	AccountID int64       `json:"account_id"`
+	AfterDate pgtype.Date `json:"after_date"`
+}
+
+func (q *Queries) ListFutureTransactions(ctx context.Context, arg ListFutureTransactionsParams) ([]PocketsTransaction, error) {
+	rows, err := q.db.Query(ctx, listFutureTransactions, arg.AccountID, arg.AfterDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PocketsTransaction
+	for rows.Next() {
+		var i PocketsTransaction
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.Amount,
+			&i.IsInflow,
+			&i.TxDate,
+			&i.Note,
+			&i.IsAutoTopup,
+			&i.UserEdited,
+			&i.IsInitialBalance,
+			&i.TopupRuleID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTransactionsAll = `-- name: ListTransactionsAll :many
 SELECT id, account_id, amount, is_inflow, tx_date, note, is_auto_topup, user_edited, is_initial_balance, topup_rule_id, created_at
 FROM pockets.transactions

@@ -57,21 +57,25 @@ func init() {
 
 // stubQuerier implements sqlc.Querier for testing.
 type stubQuerier struct {
-	accounts            []sqlc.PocketsAccount
-	account             sqlc.PocketsAccount
-	balance             pgtype.Numeric
-	firstReserveID      int64
-	transactions        []sqlc.PocketsTransaction
-	transaction         sqlc.PocketsTransaction
-	topupRules          []sqlc.PocketsTopupRule
-	topupRule           sqlc.PocketsTopupRule
-	autoTopup           sqlc.PocketsTransaction
-	autoTopupErr        error
-	createdID           int64
-	err                 error
-	createTxnCalls      []sqlc.CreateTransactionParams
-	updateAutoTopupCall *sqlc.UpdateAutoTopupAmountParams
-	updateTxnCall       *sqlc.UpdateTransactionParams
+	accounts                 []sqlc.PocketsAccount
+	account                  sqlc.PocketsAccount
+	balance                  pgtype.Numeric
+	firstReserveID           int64
+	transactions             []sqlc.PocketsTransaction
+	transaction              sqlc.PocketsTransaction
+	topupRules               []sqlc.PocketsTopupRule
+	topupRule                sqlc.PocketsTopupRule
+	autoTopup                sqlc.PocketsTransaction
+	autoTopupErr             error
+	createdID                int64
+	err                      error
+	createTxnCalls           []sqlc.CreateTransactionParams
+	updateAutoTopupCall      *sqlc.UpdateAutoTopupAmountParams
+	updateTxnCall            *sqlc.UpdateTransactionParams
+	futureTransactions       []sqlc.PocketsTransaction
+	balancesByAccount        map[int64]pgtype.Numeric
+	futureTransactionsByAcct map[int64][]sqlc.PocketsTransaction
+	topupRulesByAccount      map[int64][]sqlc.PocketsTopupRule
 }
 
 func (s *stubQuerier) CreateAccount(_ context.Context, _ sqlc.CreateAccountParams) (int64, error) {
@@ -93,8 +97,22 @@ func (s *stubQuerier) UpdateAccount(_ context.Context, _ sqlc.UpdateAccountParam
 	return s.err
 }
 
-func (s *stubQuerier) GetAccountBalance(_ context.Context, _ int64) (pgtype.Numeric, error) {
+func (s *stubQuerier) GetAccountBalanceAsOfDate(_ context.Context, arg sqlc.GetAccountBalanceAsOfDateParams) (pgtype.Numeric, error) {
+	if s.balancesByAccount != nil {
+		if b, ok := s.balancesByAccount[arg.AccountID]; ok {
+			return b, s.err
+		}
+	}
 	return s.balance, s.err
+}
+
+func (s *stubQuerier) ListFutureTransactions(_ context.Context, arg sqlc.ListFutureTransactionsParams) ([]sqlc.PocketsTransaction, error) {
+	if s.futureTransactionsByAcct != nil {
+		if txns, ok := s.futureTransactionsByAcct[arg.AccountID]; ok {
+			return txns, s.err
+		}
+	}
+	return s.futureTransactions, s.err
 }
 
 func (s *stubQuerier) GetFirstReserveAccountID(_ context.Context) (int64, error) {
@@ -153,7 +171,12 @@ func (s *stubQuerier) CreateTopupRule(_ context.Context, _ sqlc.CreateTopupRuleP
 	return s.createdID, s.err
 }
 
-func (s *stubQuerier) ListTopupRules(_ context.Context, _ int64) ([]sqlc.PocketsTopupRule, error) {
+func (s *stubQuerier) ListTopupRules(_ context.Context, accountID int64) ([]sqlc.PocketsTopupRule, error) {
+	if s.topupRulesByAccount != nil {
+		if rules, ok := s.topupRulesByAccount[accountID]; ok {
+			return rules, s.err
+		}
+	}
 	return s.topupRules, s.err
 }
 
@@ -893,7 +916,7 @@ func TestEnsureAutoTopups(t *testing.T) {
 
 func TestComputeForecast(t *testing.T) {
 	t.Run("no rules flat balance", func(t *testing.T) {
-		rows := computeForecast(1000, 0, nil, 6)
+		rows := computeForecast(1000, 0, nil, 6, nil)
 		if len(rows) != 6 {
 			t.Fatalf("expected 6 rows, got %d", len(rows))
 		}
@@ -908,7 +931,7 @@ func TestComputeForecast(t *testing.T) {
 		rules := []sqlc.PocketsTopupRule{
 			{ID: 1, Amount: makeNumeric("100.00"), EffectiveDate: pgtype.Date{Time: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), Valid: true}},
 		}
-		rows := computeForecast(500, 2000, rules, 3)
+		rows := computeForecast(500, 2000, rules, 3, nil)
 		if len(rows) != 3 {
 			t.Fatalf("expected 3 rows, got %d", len(rows))
 		}
@@ -931,7 +954,7 @@ func TestComputeForecast(t *testing.T) {
 			{ID: 1, Amount: makeNumeric("100.00"), EffectiveDate: pgtype.Date{Time: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), Valid: true}},
 			{ID: 2, Amount: makeNumeric("200.00"), EffectiveDate: pgtype.Date{Time: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), Valid: true}},
 		}
-		rows := computeForecast(0, 0, rules, 6)
+		rows := computeForecast(0, 0, rules, 6, nil)
 		// Months: Apr(+100=100), May(+100=200), Jun(+200=400), Jul(+200=600), Aug(+200=800), Sep(+200=1000)
 		// Wait - need to check: forecast starts from "next month" relative to now (March 2026)
 		// Month 1 = April, Month 2 = May, Month 3 = June (rule 2 applies), etc.
@@ -945,54 +968,195 @@ func TestComputeForecast(t *testing.T) {
 			t.Errorf("Jun: got %s, want 400.00", rows[2].Balance)
 		}
 	})
+
+	t.Run("future withdrawal reduces forecast balance", func(t *testing.T) {
+		// Now is March 15 2026. Balance=1000, topup 100/month, future outflow 300 in May.
+		rules := []sqlc.PocketsTopupRule{
+			{ID: 1, Amount: makeNumeric("100.00"), EffectiveDate: pgtype.Date{Time: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), Valid: true}},
+		}
+		futureTxns := []sqlc.PocketsTransaction{
+			{ID: 1, Amount: makeNumeric("300.00"), IsInflow: false, TxDate: pgtype.Date{Time: time.Date(2026, 5, 10, 0, 0, 0, 0, time.UTC), Valid: true}},
+		}
+		rows := computeForecast(1000, 0, rules, 6, futureTxns)
+		// Apr: 1000+100=1100, May: 1100+100-300=900, Jun: 900+100=1000,
+		// Jul: 1100, Aug: 1200, Sep: 1300
+		expected := []string{"1100.00", "900.00", "1000.00", "1100.00", "1200.00", "1300.00"}
+		for i, r := range rows {
+			if r.Balance != expected[i] {
+				t.Errorf("row %d: got %s, want %s", i, r.Balance, expected[i])
+			}
+		}
+	})
+
+	t.Run("future inflow in forecast", func(t *testing.T) {
+		// Balance=500, no rules, future inflow 200 in June (month 3).
+		futureTxns := []sqlc.PocketsTransaction{
+			{ID: 1, Amount: makeNumeric("200.00"), IsInflow: true, TxDate: pgtype.Date{Time: time.Date(2026, 6, 5, 0, 0, 0, 0, time.UTC), Valid: true}},
+		}
+		rows := computeForecast(500, 0, nil, 6, futureTxns)
+		// Apr=500, May=500, Jun=700, Jul=700, Aug=700, Sep=700
+		expected := []string{"500.00", "500.00", "700.00", "700.00", "700.00", "700.00"}
+		for i, r := range rows {
+			if r.Balance != expected[i] {
+				t.Errorf("row %d: got %s, want %s", i, r.Balance, expected[i])
+			}
+		}
+	})
+
+	t.Run("multiple future txns in same month", func(t *testing.T) {
+		futureTxns := []sqlc.PocketsTransaction{
+			{ID: 1, Amount: makeNumeric("100.00"), IsInflow: true, TxDate: pgtype.Date{Time: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), Valid: true}},
+			{ID: 2, Amount: makeNumeric("50.00"), IsInflow: false, TxDate: pgtype.Date{Time: time.Date(2026, 5, 15, 0, 0, 0, 0, time.UTC), Valid: true}},
+		}
+		rows := computeForecast(1000, 0, nil, 3, futureTxns)
+		// Apr=1000, May=1000+100-50=1050, Jun=1050
+		expected := []string{"1000.00", "1050.00", "1050.00"}
+		for i, r := range rows {
+			if r.Balance != expected[i] {
+				t.Errorf("row %d: got %s, want %s", i, r.Balance, expected[i])
+			}
+		}
+	})
+
+	t.Run("current-month future txn adjusts starting balance", func(t *testing.T) {
+		// Now is March 15. A txn dated March 20 is future but in current month.
+		// It should be applied to the starting balance before the month loop.
+		futureTxns := []sqlc.PocketsTransaction{
+			{ID: 1, Amount: makeNumeric("200.00"), IsInflow: false, TxDate: pgtype.Date{Time: time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC), Valid: true}},
+		}
+		rows := computeForecast(1000, 0, nil, 3, futureTxns)
+		// Starting balance adjusted: 1000-200=800
+		// Apr=800, May=800, Jun=800
+		expected := []string{"800.00", "800.00", "800.00"}
+		for i, r := range rows {
+			if r.Balance != expected[i] {
+				t.Errorf("row %d: got %s, want %s", i, r.Balance, expected[i])
+			}
+		}
+	})
 }
 
 func TestHandleAccountForecast(t *testing.T) {
-	stub := &stubQuerier{
-		account: sqlc.PocketsAccount{ID: 1, Name: "Savings", Icon: "💰", Colour: "steel"},
-		balance: makeNumeric("1000.00"),
-	}
-	tmpl := testTemplates(t)
-	handler := handleAccountForecast(stub, tmpl)
+	t.Run("basic forecast", func(t *testing.T) {
+		stub := &stubQuerier{
+			account: sqlc.PocketsAccount{ID: 1, Name: "Savings", Icon: "💰", Colour: "steel"},
+			balance: makeNumeric("1000.00"),
+		}
+		tmpl := testTemplates(t)
+		handler := handleAccountForecast(stub, tmpl)
 
-	req := httptest.NewRequest(http.MethodGet, "/accounts/1/forecast?months=6", nil)
-	req.SetPathValue("id", "1")
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
+		req := httptest.NewRequest(http.MethodGet, "/accounts/1/forecast?months=6", nil)
+		req.SetPathValue("id", "1")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
-	}
-	body := w.Body.String()
-	if !strings.Contains(body, "Forecast") {
-		t.Error("expected forecast heading")
-	}
-	if !strings.Contains(body, "1000.00") {
-		t.Error("expected balance in forecast")
-	}
+		if w.Code != http.StatusOK {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
+		}
+		body := w.Body.String()
+		if !strings.Contains(body, "Forecast") {
+			t.Error("expected forecast heading")
+		}
+		if !strings.Contains(body, "1000.00") {
+			t.Error("expected balance in forecast")
+		}
+	})
+
+	t.Run("future transactions affect forecast", func(t *testing.T) {
+		stub := &stubQuerier{
+			account: sqlc.PocketsAccount{ID: 1, Name: "Savings", Icon: "💰", Colour: "steel"},
+			balance: makeNumeric("1000.00"),
+			topupRules: []sqlc.PocketsTopupRule{
+				{ID: 1, Amount: makeNumeric("100.00"), EffectiveDate: pgtype.Date{Time: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), Valid: true}},
+			},
+			futureTransactions: []sqlc.PocketsTransaction{
+				{ID: 1, Amount: makeNumeric("500.00"), IsInflow: false, TxDate: pgtype.Date{Time: time.Date(2026, 5, 10, 0, 0, 0, 0, time.UTC), Valid: true}},
+			},
+			autoTopupErr: pgx.ErrNoRows,
+		}
+		tmpl := testTemplates(t)
+		handler := handleAccountForecast(stub, tmpl)
+
+		req := httptest.NewRequest(http.MethodGet, "/accounts/1/forecast?months=6", nil)
+		req.SetPathValue("id", "1")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
+		}
+		body := w.Body.String()
+		// May should show 1000+100+100-500=700, not 1200
+		if !strings.Contains(body, "700.00") {
+			t.Error("expected forecast to reflect future withdrawal (700.00)")
+		}
+	})
 }
 
 func TestHandleAllForecast(t *testing.T) {
-	stub := &stubQuerier{
-		accounts: []sqlc.PocketsAccount{
-			{ID: 1, Name: "Savings", Icon: "💰", Colour: "steel"},
-		},
-		balance: makeNumeric("500.00"),
-	}
-	tmpl := testTemplates(t)
-	handler := handleAllForecast(stub, tmpl)
+	t.Run("basic all-accounts forecast", func(t *testing.T) {
+		stub := &stubQuerier{
+			accounts: []sqlc.PocketsAccount{
+				{ID: 1, Name: "Savings", Icon: "💰", Colour: "steel"},
+			},
+			balance: makeNumeric("500.00"),
+		}
+		tmpl := testTemplates(t)
+		handler := handleAllForecast(stub, tmpl)
 
-	req := httptest.NewRequest(http.MethodGet, "/forecast?months=6", nil)
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
+		req := httptest.NewRequest(http.MethodGet, "/forecast?months=6", nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
-	}
-	body := w.Body.String()
-	if !strings.Contains(body, "All Accounts") {
-		t.Error("expected all accounts heading")
-	}
+		if w.Code != http.StatusOK {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
+		}
+		body := w.Body.String()
+		if !strings.Contains(body, "All Accounts") {
+			t.Error("expected all accounts heading")
+		}
+	})
+
+	t.Run("multiple accounts with different balances and future txns", func(t *testing.T) {
+		stub := &stubQuerier{
+			accounts: []sqlc.PocketsAccount{
+				{ID: 1, Name: "Savings", Icon: "💰", Colour: "steel"},
+				{ID: 2, Name: "Travel", Icon: "✈️", Colour: "teal"},
+			},
+			balancesByAccount: map[int64]pgtype.Numeric{
+				1: makeNumeric("1000.00"),
+				2: makeNumeric("500.00"),
+			},
+			topupRulesByAccount: map[int64][]sqlc.PocketsTopupRule{
+				1: {{ID: 1, Amount: makeNumeric("100.00"), EffectiveDate: pgtype.Date{Time: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), Valid: true}}},
+				2: {},
+			},
+			futureTransactionsByAcct: map[int64][]sqlc.PocketsTransaction{
+				1: {},
+				2: {{ID: 1, Amount: makeNumeric("200.00"), IsInflow: false, TxDate: pgtype.Date{Time: time.Date(2026, 4, 5, 0, 0, 0, 0, time.UTC), Valid: true}}},
+			},
+			autoTopupErr: pgx.ErrNoRows,
+		}
+		tmpl := testTemplates(t)
+		handler := handleAllForecast(stub, tmpl)
+
+		req := httptest.NewRequest(http.MethodGet, "/forecast?months=6", nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
+		}
+		body := w.Body.String()
+		// Account 1 Apr: 1000+100=1100
+		if !strings.Contains(body, "1100.00") {
+			t.Error("expected Savings forecast with topup (1100.00)")
+		}
+		// Account 2 Apr: 500-200=300
+		if !strings.Contains(body, "300.00") {
+			t.Error("expected Travel forecast with future withdrawal (300.00)")
+		}
+	})
 }
 
 // --- Edit account tests ---

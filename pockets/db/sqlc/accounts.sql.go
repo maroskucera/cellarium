@@ -76,14 +76,19 @@ func (q *Queries) GetAccount(ctx context.Context, id int64) (PocketsAccount, err
 	return i, err
 }
 
-const getAccountBalance = `-- name: GetAccountBalance :one
+const getAccountBalanceAsOfDate = `-- name: GetAccountBalanceAsOfDate :one
 SELECT COALESCE(SUM(CASE WHEN is_inflow THEN amount ELSE -amount END), 0)::NUMERIC(12,2) AS balance
 FROM pockets.transactions
-WHERE account_id = $1
+WHERE account_id = $1 AND tx_date <= $2
 `
 
-func (q *Queries) GetAccountBalance(ctx context.Context, accountID int64) (pgtype.Numeric, error) {
-	row := q.db.QueryRow(ctx, getAccountBalance, accountID)
+type GetAccountBalanceAsOfDateParams struct {
+	AccountID int64       `json:"account_id"`
+	AsOfDate  pgtype.Date `json:"as_of_date"`
+}
+
+func (q *Queries) GetAccountBalanceAsOfDate(ctx context.Context, arg GetAccountBalanceAsOfDateParams) (pgtype.Numeric, error) {
+	row := q.db.QueryRow(ctx, getAccountBalanceAsOfDate, arg.AccountID, arg.AsOfDate)
 	var balance pgtype.Numeric
 	err := row.Scan(&balance)
 	return balance, err

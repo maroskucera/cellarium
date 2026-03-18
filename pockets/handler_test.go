@@ -235,8 +235,8 @@ func TestHandleDashboard(t *testing.T) {
 		if !strings.Contains(body, "Savings") {
 			t.Error("expected account name Savings")
 		}
-		if !strings.Contains(body, "1250.00") {
-			t.Error("expected balance 1250.00")
+		if !strings.Contains(body, "1 250,00") {
+			t.Error("expected balance 1 250,00")
 		}
 		if w.Header().Get("Cache-Control") != "no-store" {
 			t.Error("expected Cache-Control: no-store")
@@ -388,11 +388,11 @@ func TestHandleAccountDetail(t *testing.T) {
 			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
 		}
 		body := w.Body.String()
-		if !strings.Contains(body, "500.00") {
-			t.Error("expected balance 500.00")
+		if !strings.Contains(body, "500,00") {
+			t.Error("expected balance 500,00")
 		}
-		if !strings.Contains(body, "-100.00") {
-			t.Error("expected outflow -100.00")
+		if !strings.Contains(body, "-100,00") {
+			t.Error("expected outflow -100,00")
 		}
 	})
 
@@ -599,8 +599,8 @@ func TestHandleEditTransaction(t *testing.T) {
 			t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
 		}
 		body := w.Body.String()
-		if !strings.Contains(body, "50.00") {
-			t.Error("expected amount 50.00")
+		if !strings.Contains(body, "50,00") {
+			t.Error("expected amount 50,00")
 		}
 	})
 
@@ -714,8 +714,8 @@ func TestHandleTopupRules(t *testing.T) {
 		t.Fatalf("got status %d, want %d", w.Code, http.StatusOK)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, "200.00") {
-		t.Error("expected rule amount 200.00")
+	if !strings.Contains(body, "200,00") {
+		t.Error("expected rule amount 200,00")
 	}
 }
 
@@ -921,8 +921,8 @@ func TestComputeForecast(t *testing.T) {
 			t.Fatalf("expected 6 rows, got %d", len(rows))
 		}
 		for _, r := range rows {
-			if r.Balance != "1000.00" {
-				t.Errorf("expected 1000.00, got %s", r.Balance)
+			if r.Balance != "1 000,00" {
+				t.Errorf("expected 1 000,00, got %s", r.Balance)
 			}
 		}
 	})
@@ -936,7 +936,7 @@ func TestComputeForecast(t *testing.T) {
 			t.Fatalf("expected 3 rows, got %d", len(rows))
 		}
 		// Month 1: 500+100=600, Month 2: 700, Month 3: 800
-		expected := []string{"600.00", "700.00", "800.00"}
+		expected := []string{"600,00", "700,00", "800,00"}
 		for i, r := range rows {
 			if r.Balance != expected[i] {
 				t.Errorf("row %d: got %s, want %s", i, r.Balance, expected[i])
@@ -958,14 +958,14 @@ func TestComputeForecast(t *testing.T) {
 		// Months: Apr(+100=100), May(+100=200), Jun(+200=400), Jul(+200=600), Aug(+200=800), Sep(+200=1000)
 		// Wait - need to check: forecast starts from "next month" relative to now (March 2026)
 		// Month 1 = April, Month 2 = May, Month 3 = June (rule 2 applies), etc.
-		if rows[0].Balance != "100.00" {
-			t.Errorf("Apr: got %s, want 100.00", rows[0].Balance)
+		if rows[0].Balance != "100,00" {
+			t.Errorf("Apr: got %s, want 100,00", rows[0].Balance)
 		}
-		if rows[1].Balance != "200.00" {
-			t.Errorf("May: got %s, want 200.00", rows[1].Balance)
+		if rows[1].Balance != "200,00" {
+			t.Errorf("May: got %s, want 200,00", rows[1].Balance)
 		}
-		if rows[2].Balance != "400.00" {
-			t.Errorf("Jun: got %s, want 400.00", rows[2].Balance)
+		if rows[2].Balance != "400,00" {
+			t.Errorf("Jun: got %s, want 400,00", rows[2].Balance)
 		}
 	})
 
@@ -980,7 +980,7 @@ func TestComputeForecast(t *testing.T) {
 		rows := computeForecast(1000, 0, rules, 6, futureTxns)
 		// Apr: 1000+100=1100, May: 1100+100-300=900, Jun: 900+100=1000,
 		// Jul: 1100, Aug: 1200, Sep: 1300
-		expected := []string{"1100.00", "900.00", "1000.00", "1100.00", "1200.00", "1300.00"}
+		expected := []string{"1 100,00", "900,00", "1 000,00", "1 100,00", "1 200,00", "1 300,00"}
 		for i, r := range rows {
 			if r.Balance != expected[i] {
 				t.Errorf("row %d: got %s, want %s", i, r.Balance, expected[i])
@@ -995,7 +995,7 @@ func TestComputeForecast(t *testing.T) {
 		}
 		rows := computeForecast(500, 0, nil, 6, futureTxns)
 		// Apr=500, May=500, Jun=700, Jul=700, Aug=700, Sep=700
-		expected := []string{"500.00", "500.00", "700.00", "700.00", "700.00", "700.00"}
+		expected := []string{"500,00", "500,00", "700,00", "700,00", "700,00", "700,00"}
 		for i, r := range rows {
 			if r.Balance != expected[i] {
 				t.Errorf("row %d: got %s, want %s", i, r.Balance, expected[i])
@@ -1010,7 +1010,7 @@ func TestComputeForecast(t *testing.T) {
 		}
 		rows := computeForecast(1000, 0, nil, 3, futureTxns)
 		// Apr=1000, May=1000+100-50=1050, Jun=1050
-		expected := []string{"1000.00", "1050.00", "1050.00"}
+		expected := []string{"1 000,00", "1 050,00", "1 050,00"}
 		for i, r := range rows {
 			if r.Balance != expected[i] {
 				t.Errorf("row %d: got %s, want %s", i, r.Balance, expected[i])
@@ -1027,7 +1027,7 @@ func TestComputeForecast(t *testing.T) {
 		rows := computeForecast(1000, 0, nil, 3, futureTxns)
 		// Starting balance adjusted: 1000-200=800
 		// Apr=800, May=800, Jun=800
-		expected := []string{"800.00", "800.00", "800.00"}
+		expected := []string{"800,00", "800,00", "800,00"}
 		for i, r := range rows {
 			if r.Balance != expected[i] {
 				t.Errorf("row %d: got %s, want %s", i, r.Balance, expected[i])
@@ -1057,7 +1057,7 @@ func TestHandleAccountForecast(t *testing.T) {
 		if !strings.Contains(body, "Forecast") {
 			t.Error("expected forecast heading")
 		}
-		if !strings.Contains(body, "1000.00") {
+		if !strings.Contains(body, "1 000,00") {
 			t.Error("expected balance in forecast")
 		}
 	})
@@ -1087,8 +1087,8 @@ func TestHandleAccountForecast(t *testing.T) {
 		}
 		body := w.Body.String()
 		// May should show 1000+100+100-500=700, not 1200
-		if !strings.Contains(body, "700.00") {
-			t.Error("expected forecast to reflect future withdrawal (700.00)")
+		if !strings.Contains(body, "700,00") {
+			t.Error("expected forecast to reflect future withdrawal (700,00)")
 		}
 	})
 }
@@ -1149,12 +1149,12 @@ func TestHandleAllForecast(t *testing.T) {
 		}
 		body := w.Body.String()
 		// Account 1 Apr: 1000+100=1100
-		if !strings.Contains(body, "1100.00") {
-			t.Error("expected Savings forecast with topup (1100.00)")
+		if !strings.Contains(body, "1 100,00") {
+			t.Error("expected Savings forecast with topup (1 100,00)")
 		}
 		// Account 2 Apr: 500-200=300
-		if !strings.Contains(body, "300.00") {
-			t.Error("expected Travel forecast with future withdrawal (300.00)")
+		if !strings.Contains(body, "300,00") {
+			t.Error("expected Travel forecast with future withdrawal (300,00)")
 		}
 	})
 }

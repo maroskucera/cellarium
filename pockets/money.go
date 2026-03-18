@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -49,6 +50,8 @@ func float64ToNumeric(val float64) pgtype.Numeric {
 const maxAmount = 9999999999.99
 
 func parseAmount(s string) (float64, error) {
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, ",", ".")
 	f, ok := new(big.Float).SetString(s)
 	if !ok {
 		return 0, errors.New("invalid decimal number")
@@ -61,5 +64,20 @@ func parseAmount(s string) (float64, error) {
 }
 
 func formatAmount(val float64) string {
-	return fmt.Sprintf("%.2f", val)
+	s := fmt.Sprintf("%.2f", val)
+	parts := strings.Split(s, ".")
+	intPart := parts[0]
+	sign := ""
+	if intPart[0] == '-' {
+		sign = "-"
+		intPart = intPart[1:]
+	}
+	var result []byte
+	for i, c := range intPart {
+		if i > 0 && (len(intPart)-i)%3 == 0 {
+			result = append(result, ' ')
+		}
+		result = append(result, byte(c))
+	}
+	return sign + string(result) + "," + parts[1]
 }

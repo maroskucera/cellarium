@@ -86,6 +86,12 @@ func TestParseAmount(t *testing.T) {
 		{"empty", "", 0, true},
 		{"alpha", "abc", 0, true},
 		{"leading zero", "0.50", 0.50, false},
+		{"comma decimal", "123,45", 123.45, false},
+		{"thousands space comma decimal", "1 234,56", 1234.56, false},
+		{"thousands space dot decimal", "1 234.56", 1234.56, false},
+		{"comma decimal no thousands", "1234,56", 1234.56, false},
+		{"thousands space no decimal", "1 000", 1000, false},
+		{"multiple thousands groups", "1 234 567,89", 1234567.89, false},
 		{"exceeds max", "99999999999.00", 0, true},
 		{"exceeds negative max", "-99999999999.00", 0, true},
 	}
@@ -109,10 +115,15 @@ func TestFormatAmount(t *testing.T) {
 		val  float64
 		want string
 	}{
-		{"zero", 0, "0.00"},
-		{"integer", 100, "100.00"},
-		{"decimal", 123.45, "123.45"},
-		{"rounding", 99.999, "100.00"},
+		{"zero", 0, "0,00"},
+		{"integer", 100, "100,00"},
+		{"decimal", 123.45, "123,45"},
+		{"rounding", 99.999, "100,00"},
+		{"thousands", 1234.56, "1 234,56"},
+		{"multiple thousands", 1234567.89, "1 234 567,89"},
+		{"exact thousands boundary", 1000, "1 000,00"},
+		{"negative", -50.00, "-50,00"},
+		{"negative thousands", -1234.56, "-1 234,56"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -121,5 +132,20 @@ func TestFormatAmount(t *testing.T) {
 				t.Errorf("formatAmount() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestFormatParseRoundTrip(t *testing.T) {
+	values := []float64{0, 1.50, 123.45, 1234.56, 1234567.89, -50.00, -1234.56}
+	for _, v := range values {
+		formatted := formatAmount(v)
+		parsed, err := parseAmount(formatted)
+		if err != nil {
+			t.Errorf("parseAmount(%q) error: %v", formatted, err)
+			continue
+		}
+		if parsed != v {
+			t.Errorf("round-trip failed: %v -> %q -> %v", v, formatted, parsed)
+		}
 	}
 }

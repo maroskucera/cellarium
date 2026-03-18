@@ -115,6 +115,8 @@ input[type="date"] {
     font-size: 1rem;
     font-family: inherit;
     min-height: 44px;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 input[type="text"]::placeholder {

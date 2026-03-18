@@ -36,14 +36,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
           <tr>
             <th>Date</th>
             <th>Amount</th>
-            <th>Batch</th>
             <th class="col-check"><input type="checkbox" id="select-all" title="Select all"></th>
           </tr>
         </thead>
         <tbody>
           {{range .Batches}}
           <tr class="batch-header">
-            <td></td>
             <td>Batch {{.Batch}}</td>
             <td></td>
             <td class="col-check"><input type="checkbox" class="batch-toggle" data-batch="{{.Batch}}"></td>
@@ -52,7 +50,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
           <tr>
             <td>{{.Date}}</td>
             <td>{{.Amount}}</td>
-            <td>{{.Batch}}</td>
             <td class="col-check"><input type="checkbox" name="ids" value="{{.ID}}" class="entry-cb" data-batch="{{.Batch}}"></td>
           </tr>
           {{end}}

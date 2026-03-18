@@ -17,9 +17,7 @@
  */
 
 document.addEventListener("DOMContentLoaded", function () {
-  var selectAll = document.getElementById("select-all");
   var batchToggles = document.querySelectorAll(".batch-toggle");
-  var entryCbs = document.querySelectorAll(".entry-cb");
 
   function updateBatchToggle(batch) {
     var entries = document.querySelectorAll('.entry-cb[data-batch="' + batch + '"]');
@@ -30,34 +28,17 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function updateSelectAll() {
-    if (!selectAll) return;
-    selectAll.checked = entryCbs.length > 0 && Array.prototype.every.call(entryCbs, function (cb) {
-      return cb.checked;
-    });
-  }
-
-  if (selectAll) {
-    selectAll.addEventListener("change", function () {
-      var checked = selectAll.checked;
-      batchToggles.forEach(function (bt) { bt.checked = checked; });
-      entryCbs.forEach(function (cb) { cb.checked = checked; });
-    });
-  }
-
   batchToggles.forEach(function (batchCb) {
     batchCb.addEventListener("change", function () {
       var batch = batchCb.dataset.batch;
       var entries = document.querySelectorAll('.entry-cb[data-batch="' + batch + '"]');
       entries.forEach(function (cb) { cb.checked = batchCb.checked; });
-      updateSelectAll();
     });
   });
 
-  entryCbs.forEach(function (entryCb) {
+  document.querySelectorAll(".entry-cb").forEach(function (entryCb) {
     entryCb.addEventListener("change", function () {
       updateBatchToggle(entryCb.dataset.batch);
-      updateSelectAll();
     });
   });
 });

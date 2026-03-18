@@ -20,6 +20,7 @@
 *.swp
 *.swo
 *~
+/.playwright-mcp/
 
 # OS files
 .DS_Store

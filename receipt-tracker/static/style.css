@@ -79,7 +79,7 @@ label {
   margin-bottom: 0.35rem;
 }
 
-input {
+input:not([type="checkbox"]) {
   width: 100%;
   max-width: 100%;
   padding: 1rem;
@@ -95,11 +95,11 @@ input {
   appearance: none;
 }
 
-input:focus {
+input:not([type="checkbox"]):focus {
   border-color: var(--accent);
 }
 
-input::placeholder {
+input:not([type="checkbox"])::placeholder {
   color: var(--text-muted);
   opacity: 0.5;
 }

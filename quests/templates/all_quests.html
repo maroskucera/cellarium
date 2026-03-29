@@ -40,17 +40,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             <h3 class="quest-line-name">{{.Name}}</h3>
             <ul class="quest-list" aria-label="{{.Name}}">
             {{range .Quests}}
-                <li class="quest-card{{if eq .Status "completed"}} status-completed{{end}}" data-quest-id="{{.ID}}">
-                    <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}"
-                        {{if eq .Status "completed"}}checked{{end}} aria-label="Complete {{.Title}}">
+                <li class="quest-card" data-quest-id="{{.ID}}">
+                    <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
                     <a href="/quests/{{.ID}}/edit" class="quest-card-link">
                         <div class="quest-card-body">
                             <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
                             <p class="quest-meta">
-                                <span class="quest-type">{{.Status}}</span>
-                                {{if .QuestDate}} · 📅 {{.QuestDate}}{{end}}
-                                {{if .QuestGiver}} · {{.QuestGiver}}{{end}}
-                                {{if .Recurring}} · 🔁{{end}}
+                                {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
+                                {{if .QuestGiver}}{{if .QuestDate}} · {{end}}👤 {{.QuestGiver}}{{end}}
+                                {{if .Recurring}}{{if or .QuestDate .QuestGiver}} · {{end}}🔁{{end}}
                             </p>
                         </div>
                     </a>
@@ -63,17 +61,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         {{if .Ungrouped}}
         <ul class="quest-list" aria-label="{{.TypeName}} ungrouped quests">
         {{range .Ungrouped}}
-            <li class="quest-card{{if eq .Status "completed"}} status-completed{{end}}" data-quest-id="{{.ID}}">
-                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}"
-                    {{if eq .Status "completed"}}checked{{end}} aria-label="Complete {{.Title}}">
+            <li class="quest-card" data-quest-id="{{.ID}}">
+                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
                 <a href="/quests/{{.ID}}/edit" class="quest-card-link">
                     <div class="quest-card-body">
                         <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
                         <p class="quest-meta">
-                            <span class="quest-type">{{.Status}}</span>
-                            {{if .QuestDate}} · 📅 {{.QuestDate}}{{end}}
-                            {{if .QuestGiver}} · {{.QuestGiver}}{{end}}
-                            {{if .Recurring}} · 🔁{{end}}
+                            {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
+                            {{if .QuestGiver}}{{if .QuestDate}} · {{end}}👤 {{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if or .QuestDate .QuestGiver}} · {{end}}🔁{{end}}
                         </p>
                     </div>
                 </a>

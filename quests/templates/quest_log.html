@@ -34,15 +34,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <h2 class="log-day-header">{{.Date}}</h2>
         <ul class="quest-list" style="list-style:none;padding:0;margin:0">
         {{range .Quests}}
-            <li class="quest-card">
-                <div class="quest-card-body">
-                    <p class="quest-title {{if eq .Status "completed"}}status-completed{{else}}status-failed{{end}}">{{.Title}}</p>
-                    <p class="quest-meta">
-                        <span class="quest-type">{{.QuestType}}</span>
-                        · {{if eq .Status "completed"}}Completed{{else}}Failed{{end}}
-                        {{if .ResolvedAt}} at {{.ResolvedAt}}{{end}}
-                    </p>
-                </div>
+            <li class="quest-card {{if eq .Status "completed"}}status-completed{{else}}status-failed{{end}}" data-quest-id="{{.ID}}">
+                <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                    <div class="quest-card-body">
+                        <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                        <p class="quest-meta">
+                            {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
+                            {{if .QuestGiver}}{{if .QuestDate}} · {{end}}👤 {{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if or .QuestDate .QuestGiver}} · {{end}}🔁{{end}}
+                        </p>
+                    </div>
+                </a>
             </li>
         {{end}}
         </ul>

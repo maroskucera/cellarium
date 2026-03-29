@@ -58,7 +58,7 @@ type stubQuerier struct {
 	uncompleteCalled                bool
 	uncompleteResetDateCalled       bool
 	lastUncompleteResetDateParam    sqlc.UncompleteQuestAndResetDateParams
-	listActiveAndCompletedCalled    bool
+	listActiveCalled                bool
 	sortOrderUpdate                 *sqlc.UpdateQuestSortOrderParams
 	listDueRemindersCalled          bool
 	markReminderSentCalled          bool
@@ -120,11 +120,11 @@ func (s *stubQuerier) GetQuestLine(_ context.Context, _ int64) (sqlc.GetQuestLin
 }
 
 func (s *stubQuerier) ListActiveAndCompletedQuests(_ context.Context) ([]sqlc.QuestsQuest, error) {
-	s.listActiveAndCompletedCalled = true
 	return s.quests, s.err
 }
 
 func (s *stubQuerier) ListActiveQuests(_ context.Context) ([]sqlc.QuestsQuest, error) {
+	s.listActiveCalled = true
 	return s.quests, s.err
 }
 
@@ -463,8 +463,8 @@ func TestHandleAllQuests(t *testing.T) {
 	if !strings.Contains(w.Body.String(), "all-quests") {
 		t.Errorf("expected all-quests in body, got: %s", w.Body.String())
 	}
-	if !stub.listActiveAndCompletedCalled {
-		t.Error("expected ListActiveAndCompletedQuests to be called")
+	if !stub.listActiveCalled {
+		t.Error("expected ListActiveQuests to be called")
 	}
 }
 

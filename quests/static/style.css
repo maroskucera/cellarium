@@ -258,8 +258,14 @@ select:focus {
 }
 .quest-complete-cb { width: 1.25rem; height: 1.25rem; flex-shrink: 0; cursor: pointer; accent-color: var(--text); align-self: center; }
 .quest-type { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
-.status-completed { color: var(--text-muted); text-decoration: line-through; }
-.status-failed { color: var(--text-muted); }
+.quest-card.status-completed { border-color: #2e7d32; background: rgba(46, 125, 50, 0.05); }
+.quest-card.status-failed { border-color: #c62828; background: rgba(198, 40, 40, 0.05); }
+.quest-card.status-completed .quest-title,
+.quest-card.status-completed .quest-meta,
+.quest-card.status-completed .quest-type { color: #2e7d32; }
+.quest-card.status-failed .quest-title,
+.quest-card.status-failed .quest-meta,
+.quest-card.status-failed .quest-type { color: #c62828; }
 .log-day { margin-bottom: 1.5rem; }
 .log-day-header { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--border); }
 .quest-line-group { margin-bottom: 1.5rem; }

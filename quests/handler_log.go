@@ -26,11 +26,13 @@ import (
 )
 
 type logQuestDisplay struct {
-	ID         int64
-	Title      string
-	Status     string
-	QuestType  string
-	ResolvedAt string // formatted time "15:04"
+	ID             int64
+	Title          string
+	Status         string
+	HasDescription bool
+	QuestDate      string
+	QuestGiver     string
+	Recurring      bool
 }
 
 type logDayGroup struct {
@@ -77,11 +79,20 @@ func handleQuestLog(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			dayLabel := resolvedTime.Format("Monday, 2 January 2006")
 
 			d := logQuestDisplay{
-				ID:         quest.ID,
-				Title:      quest.Title,
-				Status:     quest.Status,
-				QuestType:  quest.QuestType,
-				ResolvedAt: resolvedTime.Format("15:04"),
+				ID:             quest.ID,
+				Title:          quest.Title,
+				Status:         quest.Status,
+				HasDescription: quest.Description.Valid && quest.Description.String != "",
+				QuestGiver:     "",
+				Recurring:      quest.RecurrenceType.Valid && quest.RecurrenceType.String != "",
+			}
+
+			if quest.QuestGiver.Valid {
+				d.QuestGiver = quest.QuestGiver.String
+			}
+
+			if quest.QuestDate.Valid {
+				d.QuestDate = quest.QuestDate.Time.Format("2 Jan")
 			}
 
 			if idx, ok := dayIndex[dayKey]; ok {

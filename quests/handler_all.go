@@ -62,7 +62,7 @@ func handleAllQuests(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			return
 		}
 
-		quests, err := q.ListActiveAndCompletedQuests(ctx)
+		quests, err := q.ListActiveQuests(ctx)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return

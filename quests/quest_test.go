@@ -62,7 +62,7 @@ func TestCreateNextRecurrence(t *testing.T) {
 	t.Run("every N days", func(t *testing.T) {
 		stub := &stubQuerier{}
 		quest := sqlc.QuestsQuest{
-			Title:          "Daily quest",
+			Title:          "Daily",
 			QuestType:      "daily",
 			QuestDate:      pgtype.Date{Time: baseDate, Valid: true},
 			RecurrenceType: pgtype.Text{String: "every", Valid: true},

@@ -35,8 +35,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
     {{if .MainQuests}}
     <section>
-        <h2>Main Quests</h2>
-        <ul class="quest-list" aria-label="Main quests">
+        <h2>Main</h2>
+        <ul class="quest-list" aria-label="Main">
         {{range .MainQuests}}
             <li class="quest-card" data-quest-id="{{.ID}}">
                 <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
@@ -59,8 +59,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
     {{if .SideQuests}}
     <section>
-        <h2>Side Quests</h2>
-        <ul class="quest-list" aria-label="Side quests">
+        <h2>Side</h2>
+        <ul class="quest-list" aria-label="Side">
         {{range .SideQuests}}
             <li class="quest-card" data-quest-id="{{.ID}}">
                 <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
@@ -83,8 +83,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
     {{if .DailyQuests}}
     <section>
-        <h2>Daily Quests</h2>
-        <ul class="quest-list" aria-label="Daily quests">
+        <h2>Daily</h2>
+        <ul class="quest-list" aria-label="Daily">
         {{range .DailyQuests}}
             <li class="quest-card" data-quest-id="{{.ID}}">
                 <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">

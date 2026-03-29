@@ -226,9 +226,9 @@ func TestHandleToday_empty(t *testing.T) {
 func TestHandleToday_withQuests(t *testing.T) {
 	stub := &stubQuerier{
 		quests: []sqlc.QuestsQuest{
-			{ID: 1, Title: "Main quest", QuestType: "main", Status: "active"},
-			{ID: 2, Title: "Side quest", QuestType: "side", Status: "active"},
-			{ID: 3, Title: "Daily quest", QuestType: "daily", Status: "active"},
+			{ID: 1, Title: "Main", QuestType: "main", Status: "active"},
+			{ID: 2, Title: "Side", QuestType: "side", Status: "active"},
+			{ID: 3, Title: "Daily", QuestType: "daily", Status: "active"},
 		},
 	}
 	tmpl := mustParseTestTemplates(t)

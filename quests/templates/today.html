@@ -43,10 +43,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                 <a href="/quests/{{.ID}}/edit" class="quest-card-link">
                     <div class="quest-card-body">
                         <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
-                        {{if or .QuestGiver .Recurring}}
+                        {{if or .QuestLineName .QuestGiver .Recurring}}
                         <p class="quest-meta">
-                            {{if .QuestGiver}}{{.QuestGiver}}{{end}}
-                            {{if .Recurring}}{{if .QuestGiver}} · {{end}}🔁{{end}}
+                            {{if .QuestLineName}}{{.QuestLineName}}{{end}}
+                            {{if .QuestGiver}}{{if .QuestLineName}} · {{end}}{{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if or .QuestLineName .QuestGiver}} · {{end}}🔁{{end}}
                         </p>
                         {{end}}
                     </div>
@@ -67,10 +68,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                 <a href="/quests/{{.ID}}/edit" class="quest-card-link">
                     <div class="quest-card-body">
                         <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
-                        {{if or .QuestGiver .Recurring}}
+                        {{if or .QuestLineName .QuestGiver .Recurring}}
                         <p class="quest-meta">
-                            {{if .QuestGiver}}{{.QuestGiver}}{{end}}
-                            {{if .Recurring}}{{if .QuestGiver}} · {{end}}🔁{{end}}
+                            {{if .QuestLineName}}{{.QuestLineName}}{{end}}
+                            {{if .QuestGiver}}{{if .QuestLineName}} · {{end}}{{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if or .QuestLineName .QuestGiver}} · {{end}}🔁{{end}}
                         </p>
                         {{end}}
                     </div>
@@ -91,10 +93,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                 <a href="/quests/{{.ID}}/edit" class="quest-card-link">
                     <div class="quest-card-body">
                         <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
-                        {{if or .QuestGiver .Recurring}}
+                        {{if or .QuestLineName .QuestGiver .Recurring}}
                         <p class="quest-meta">
-                            {{if .QuestGiver}}{{.QuestGiver}}{{end}}
-                            {{if .Recurring}}{{if .QuestGiver}} · {{end}}🔁{{end}}
+                            {{if .QuestLineName}}{{.QuestLineName}}{{end}}
+                            {{if .QuestGiver}}{{if .QuestLineName}} · {{end}}{{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if or .QuestLineName .QuestGiver}} · {{end}}🔁{{end}}
                         </p>
                         {{end}}
                     </div>

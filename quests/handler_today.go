@@ -89,6 +89,17 @@ func handleToday(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			return
 		}
 
+		lines, err := q.ListQuestLines(ctx)
+		if err != nil {
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+
+		lineNames := make(map[int64]string, len(lines))
+		for _, l := range lines {
+			lineNames[l.ID] = l.Name
+		}
+
 		data := todayData{
 			Nav:     "today",
 			Date:    now.Format("Monday, 2 January 2006"),
@@ -97,6 +108,9 @@ func handleToday(q sqlc.Querier, tmpl *template.Template) http.Handler {
 
 		for _, quest := range quests {
 			d := toQuestDisplay(quest)
+			if quest.QuestLineID.Valid {
+				d.QuestLineName = lineNames[quest.QuestLineID.Int64]
+			}
 			switch quest.QuestType {
 			case "main":
 				data.MainQuests = append(data.MainQuests, d)

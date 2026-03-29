@@ -42,4 +42,5 @@ type QuestsQuestLine struct {
 	Description pgtype.Text        `json:"description"`
 	SortOrder   int32              `json:"sort_order"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	QuestType   pgtype.Text        `json:"quest_type"`
 }

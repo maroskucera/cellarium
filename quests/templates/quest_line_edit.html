@@ -41,9 +41,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             <label for="description">Description</label>
             <textarea id="description" name="description">{{if .Line}}{{if .Line.Description.Valid}}{{.Line.Description.String}}{{end}}{{end}}</textarea>
 
-            <label for="sort_order">Sort Order</label>
-            <input type="number" id="sort_order" name="sort_order" min="0"
-                value="{{if .Line}}{{.Line.SortOrder}}{{else}}0{{end}}">
+            <label for="quest_type">Type</label>
+            <select id="quest_type" name="quest_type">
+                <option value=""{{if .Line}}{{if not .Line.QuestType.Valid}} selected{{end}}{{end}}>— none —</option>
+                <option value="main"{{if .Line}}{{if and .Line.QuestType.Valid (eq .Line.QuestType.String "main")}} selected{{end}}{{end}}>Main</option>
+                <option value="side"{{if .Line}}{{if and .Line.QuestType.Valid (eq .Line.QuestType.String "side")}} selected{{end}}{{end}}>Side</option>
+                <option value="daily"{{if .Line}}{{if and .Line.QuestType.Valid (eq .Line.QuestType.String "daily")}} selected{{end}}{{end}}>Daily</option>
+            </select>
         </fieldset>
         <button type="submit">Save Changes</button>
         <p style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem">

@@ -18,29 +18,38 @@
 (function() {
     'use strict';
     let dragEl = null;
-    function initList(list) {
-        const items = () => [...list.querySelectorAll('[data-quest-id]')];
+    let dragList = null;
+    function saveOrder(list) {
+        if (list.classList.contains('quest-line-list')) {
+            [...list.querySelectorAll('[data-quest-line-id]')].forEach((item, idx) => {
+                fetch('/quest-lines/reorder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: parseInt(item.dataset.questLineId, 10), sort_order: idx}) }).catch(console.error);
+            });
+        } else {
+            [...list.querySelectorAll('[data-quest-id]')].forEach((item, idx) => {
+                fetch('/quests/reorder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: parseInt(item.dataset.questId, 10), sort_order: idx}) }).catch(console.error);
+            });
+        }
+    }
+    function initListByAttr(list, attr) {
+        const items = () => [...list.querySelectorAll('[' + attr + ']')];
         items().forEach(item => {
             item.setAttribute('draggable', 'true');
-            item.addEventListener('dragstart', e => { dragEl = item; e.dataTransfer.effectAllowed = 'move'; });
+            item.addEventListener('dragstart', e => { dragEl = item; dragList = list; e.dataTransfer.effectAllowed = 'move'; });
             item.addEventListener('dragover', e => { e.preventDefault(); item.classList.add('drag-over'); });
             item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
             item.addEventListener('drop', e => {
                 e.preventDefault(); item.classList.remove('drag-over');
-                if (dragEl && dragEl !== item) {
+                if (dragEl && dragEl !== item && list === dragList) {
                     const all = items(); const fi = all.indexOf(dragEl); const ti = all.indexOf(item);
                     if (fi < ti) { list.insertBefore(dragEl, item.nextSibling); } else { list.insertBefore(dragEl, item); }
                     saveOrder(list);
                 }
                 dragEl = null;
+                dragList = null;
             });
-            item.addEventListener('dragend', () => { dragEl = null; items().forEach(i => i.classList.remove('drag-over')); });
+            item.addEventListener('dragend', () => { dragEl = null; dragList = null; items().forEach(i => i.classList.remove('drag-over')); });
         });
     }
-    function saveOrder(list) {
-        [...list.querySelectorAll('[data-quest-id]')].forEach((item, idx) => {
-            fetch('/quests/reorder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: parseInt(item.dataset.questId, 10), sort_order: idx}) }).catch(console.error);
-        });
-    }
-    document.querySelectorAll('.quest-list').forEach(initList);
+    document.querySelectorAll('.quest-list').forEach(list => initListByAttr(list, 'data-quest-id'));
+    document.querySelectorAll('.quest-line-list').forEach(list => initListByAttr(list, 'data-quest-line-id'));
 }());

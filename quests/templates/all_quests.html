@@ -31,35 +31,37 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <p><a href="/quests/new" class="btn btn-secondary">+ New Quest</a></p>
     </header>
 
-    {{range .Groups}}
-    <section class="quest-line-group">
-        <h2 class="quest-line-name">{{.Name}}</h2>
-        <ul class="quest-list" aria-label="{{.Name}}">
-        {{range .Quests}}
-            <li class="quest-card{{if eq .Status "completed"}} status-completed{{end}}" data-quest-id="{{.ID}}">
-                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}"
-                    {{if eq .Status "completed"}}checked{{end}} aria-label="Complete {{.Title}}">
-                <a href="/quests/{{.ID}}/edit" class="quest-card-link">
-                    <div class="quest-card-body">
-                        <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
-                        <p class="quest-meta">
-                            <span class="quest-type">{{.Status}}</span>
-                            {{if .QuestDate}} · 📅 {{.QuestDate}}{{end}}
-                            {{if .QuestGiver}} · {{.QuestGiver}}{{end}}
-                            {{if .Recurring}} · 🔁{{end}}
-                        </p>
-                    </div>
-                </a>
-            </li>
-        {{end}}
-        </ul>
-    </section>
-    {{end}}
+    {{range .Types}}
+    <section class="quest-type-group">
+        <h2 class="quest-type-name">{{.TypeName}}</h2>
 
-    {{if .Ungrouped}}
-    <section>
-        <h2 class="quest-line-name">Ungrouped</h2>
-        <ul class="quest-list" aria-label="Ungrouped quests">
+        {{range .Lines}}
+        <section class="quest-line-group">
+            <h3 class="quest-line-name">{{.Name}}</h3>
+            <ul class="quest-list" aria-label="{{.Name}}">
+            {{range .Quests}}
+                <li class="quest-card{{if eq .Status "completed"}} status-completed{{end}}" data-quest-id="{{.ID}}">
+                    <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}"
+                        {{if eq .Status "completed"}}checked{{end}} aria-label="Complete {{.Title}}">
+                    <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                        <div class="quest-card-body">
+                            <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                            <p class="quest-meta">
+                                <span class="quest-type">{{.Status}}</span>
+                                {{if .QuestDate}} · 📅 {{.QuestDate}}{{end}}
+                                {{if .QuestGiver}} · {{.QuestGiver}}{{end}}
+                                {{if .Recurring}} · 🔁{{end}}
+                            </p>
+                        </div>
+                    </a>
+                </li>
+            {{end}}
+            </ul>
+        </section>
+        {{end}}
+
+        {{if .Ungrouped}}
+        <ul class="quest-list" aria-label="{{.TypeName}} ungrouped quests">
         {{range .Ungrouped}}
             <li class="quest-card{{if eq .Status "completed"}} status-completed{{end}}" data-quest-id="{{.ID}}">
                 <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}"
@@ -78,10 +80,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             </li>
         {{end}}
         </ul>
+        {{end}}
     </section>
     {{end}}
 
-    {{if and (eq (len .Groups) 0) (eq (len .Ungrouped) 0)}}
+    {{if eq (len .Types) 0}}
     <div class="empty-state">
         <p>No active quests.</p>
         <p><a href="/quests/new" class="btn">Add a quest</a></p>

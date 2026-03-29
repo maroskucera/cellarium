@@ -28,9 +28,10 @@ import (
 )
 
 type questLineOption struct {
-	ID       int64
-	Name     string
-	Selected bool
+	ID        int64
+	Name      string
+	Selected  bool
+	QuestType string // empty if the quest line has no fixed type
 }
 
 type questFormData struct {
@@ -124,10 +125,15 @@ func loadQuestLines(q sqlc.Querier, r *http.Request, selectedID int64) ([]questL
 	}
 	opts := make([]questLineOption, 0, len(lines))
 	for _, l := range lines {
+		qt := ""
+		if l.QuestType.Valid {
+			qt = l.QuestType.String
+		}
 		opts = append(opts, questLineOption{
-			ID:       l.ID,
-			Name:     l.Name,
-			Selected: l.ID == selectedID,
+			ID:        l.ID,
+			Name:      l.Name,
+			Selected:  l.ID == selectedID,
+			QuestType: qt,
 		})
 	}
 	return opts, nil
@@ -140,6 +146,12 @@ func handleNewQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			if err != nil || params.Title == "" {
 				http.Error(w, "invalid form data", http.StatusBadRequest)
 				return
+			}
+			// Enforce type from quest line when it has a fixed type
+			if params.QuestLineID.Valid {
+				if line, err := q.GetQuestLine(r.Context(), params.QuestLineID.Int64); err == nil && line.QuestType.Valid {
+					params.QuestType = line.QuestType.String
+				}
 			}
 			if _, err := q.CreateQuest(r.Context(), params); err != nil {
 				http.Error(w, "database error", http.StatusInternalServerError)
@@ -192,6 +204,12 @@ func handleEditQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			if err != nil || params.Title == "" {
 				http.Error(w, "invalid form data", http.StatusBadRequest)
 				return
+			}
+			// Enforce type from quest line when it has a fixed type
+			if params.QuestLineID.Valid {
+				if line, err := q.GetQuestLine(ctx, params.QuestLineID.Int64); err == nil && line.QuestType.Valid {
+					params.QuestType = line.QuestType.String
+				}
 			}
 			updateParams := sqlc.UpdateQuestParams{
 				ID:             id,

@@ -66,13 +66,13 @@ type Querier interface {
 	FailOverdueQuests(ctx context.Context, today pgtype.Date) error
 	FailQuest(ctx context.Context, id int64) error
 	GetQuest(ctx context.Context, id int64) (QuestsQuest, error)
-	GetQuestLine(ctx context.Context, id int64) (QuestsQuestLine, error)
+	GetQuestLine(ctx context.Context, id int64) (GetQuestLineRow, error)
 	ListActiveAndCompletedQuests(ctx context.Context) ([]QuestsQuest, error)
 	ListActiveQuests(ctx context.Context) ([]QuestsQuest, error)
 	ListDueReminders(ctx context.Context, arg ListDueRemindersParams) ([]QuestsQuest, error)
 	ListPushSubscriptions(ctx context.Context) ([]QuestsPushSubscription, error)
 	ListQuestGivers(ctx context.Context) ([]pgtype.Text, error)
-	ListQuestLines(ctx context.Context) ([]QuestsQuestLine, error)
+	ListQuestLines(ctx context.Context) ([]ListQuestLinesRow, error)
 	ListQuestLog(ctx context.Context) ([]QuestsQuest, error)
 	ListTodayQuests(ctx context.Context, questDate pgtype.Date) ([]QuestsQuest, error)
 	MarkReminderSent(ctx context.Context, arg MarkReminderSentParams) error
@@ -80,7 +80,9 @@ type Querier interface {
 	UncompleteQuestAndResetDate(ctx context.Context, arg UncompleteQuestAndResetDateParams) error
 	UpdateQuest(ctx context.Context, arg UpdateQuestParams) error
 	UpdateQuestLine(ctx context.Context, arg UpdateQuestLineParams) error
+	UpdateQuestLineSortOrder(ctx context.Context, arg UpdateQuestLineSortOrderParams) error
 	UpdateQuestSortOrder(ctx context.Context, arg UpdateQuestSortOrderParams) error
+	UpdateQuestTypeByLine(ctx context.Context, arg UpdateQuestTypeByLineParams) error
 }
 
 var _ Querier = (*Queries)(nil)

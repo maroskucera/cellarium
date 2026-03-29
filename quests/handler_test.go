@@ -43,26 +43,29 @@ func fixedTime() time.Time {
 type stubQuerier struct {
 	quests     []sqlc.QuestsQuest
 	quest      sqlc.QuestsQuest
-	questLines []sqlc.QuestsQuestLine
-	questLine  sqlc.QuestsQuestLine
+	questLines []sqlc.ListQuestLinesRow
+	questLine  sqlc.GetQuestLineRow
 	pushSubs   []sqlc.QuestsPushSubscription
 	givers     []pgtype.Text
 	createdID  int64
 	err        error
 
-	failOverdueQuestsCall        *time.Time
-	createQuestCalled            bool
-	lastCreateQuestParams        sqlc.CreateQuestParams
-	completeCalled               bool
-	failCalled                   bool
-	uncompleteCalled             bool
-	uncompleteResetDateCalled    bool
-	lastUncompleteResetDateParam sqlc.UncompleteQuestAndResetDateParams
-	listActiveAndCompletedCalled bool
-	sortOrderUpdate              *sqlc.UpdateQuestSortOrderParams
-	listDueRemindersCalled       bool
-	markReminderSentCalled       bool
-	dueReminders                 []sqlc.QuestsQuest
+	failOverdueQuestsCall           *time.Time
+	createQuestCalled               bool
+	lastCreateQuestParams           sqlc.CreateQuestParams
+	completeCalled                  bool
+	failCalled                      bool
+	uncompleteCalled                bool
+	uncompleteResetDateCalled       bool
+	lastUncompleteResetDateParam    sqlc.UncompleteQuestAndResetDateParams
+	listActiveAndCompletedCalled    bool
+	sortOrderUpdate                 *sqlc.UpdateQuestSortOrderParams
+	listDueRemindersCalled          bool
+	markReminderSentCalled          bool
+	dueReminders                    []sqlc.QuestsQuest
+	lastCreateQuestLineParams       sqlc.CreateQuestLineParams
+	updateQuestTypeByLineCalled     bool
+	lastUpdateQuestTypeByLineParams sqlc.UpdateQuestTypeByLineParams
 }
 
 func (s *stubQuerier) CompleteQuest(_ context.Context, _ int64) error {
@@ -80,7 +83,8 @@ func (s *stubQuerier) CreateQuest(_ context.Context, arg sqlc.CreateQuestParams)
 	return s.createdID, s.err
 }
 
-func (s *stubQuerier) CreateQuestLine(_ context.Context, _ sqlc.CreateQuestLineParams) (int64, error) {
+func (s *stubQuerier) CreateQuestLine(_ context.Context, arg sqlc.CreateQuestLineParams) (int64, error) {
+	s.lastCreateQuestLineParams = arg
 	return s.createdID, s.err
 }
 
@@ -111,7 +115,7 @@ func (s *stubQuerier) GetQuest(_ context.Context, _ int64) (sqlc.QuestsQuest, er
 	return s.quest, s.err
 }
 
-func (s *stubQuerier) GetQuestLine(_ context.Context, _ int64) (sqlc.QuestsQuestLine, error) {
+func (s *stubQuerier) GetQuestLine(_ context.Context, _ int64) (sqlc.GetQuestLineRow, error) {
 	return s.questLine, s.err
 }
 
@@ -148,7 +152,7 @@ func (s *stubQuerier) ListQuestGivers(_ context.Context) ([]pgtype.Text, error) 
 	return s.givers, s.err
 }
 
-func (s *stubQuerier) ListQuestLines(_ context.Context) ([]sqlc.QuestsQuestLine, error) {
+func (s *stubQuerier) ListQuestLines(_ context.Context) ([]sqlc.ListQuestLinesRow, error) {
 	return s.questLines, s.err
 }
 
@@ -178,6 +182,16 @@ func (s *stubQuerier) UpdateQuestSortOrder(_ context.Context, arg sqlc.UpdateQue
 	return s.err
 }
 
+func (s *stubQuerier) UpdateQuestLineSortOrder(_ context.Context, _ sqlc.UpdateQuestLineSortOrderParams) error {
+	return s.err
+}
+
+func (s *stubQuerier) UpdateQuestTypeByLine(_ context.Context, arg sqlc.UpdateQuestTypeByLineParams) error {
+	s.updateQuestTypeByLineCalled = true
+	s.lastUpdateQuestTypeByLineParams = arg
+	return s.err
+}
+
 //go:embed templates/*
 var testTemplatesFS embed.FS
 
@@ -186,7 +200,7 @@ const testTemplates = `
 {{define "today"}}<html><body>today {{.Date}} main={{len .MainQuests}} side={{len .SideQuests}} daily={{len .DailyQuests}}{{range .MainQuests}}<a href="/quests/{{.ID}}/edit" class="quest-card-link">{{.Title}}{{if .HasDescription}} 📝{{end}}</a>{{end}}</body></html>{{end}}
 {{define "quest_new"}}<html><body>quest-new</body></html>{{end}}
 {{define "quest_edit"}}<html><body>quest-edit id={{.Quest.ID}}<div class="btn-row"><button type="submit">Save Changes</button><a href="/" class="btn btn-secondary">Cancel</a><form method="post" action="/quests/{{.Quest.ID}}/delete"><button type="submit" class="btn-danger-sm">Delete</button></form></div></body></html>{{end}}
-{{define "all_quests"}}<html><body>all-quests groups={{len .Groups}} ungrouped={{len .Ungrouped}}</body></html>{{end}}
+{{define "all_quests"}}<html><body>all-quests types={{len .Types}}</body></html>{{end}}
 {{define "quest_log"}}<html><body>quest-log days={{len .Days}}</body></html>{{end}}
 {{define "quest_lines"}}<html><body>quest-lines count={{len .QuestLines}}</body></html>{{end}}
 {{define "quest_line_new"}}<html><body>quest-line-new</body></html>{{end}}
@@ -291,6 +305,35 @@ func TestHandleCreateQuest_post(t *testing.T) {
 	}
 	if stub.lastCreateQuestParams.Title != "My Quest" {
 		t.Errorf("expected title 'My Quest', got %q", stub.lastCreateQuestParams.Title)
+	}
+}
+
+func TestHandleNewQuest_typeInheritance(t *testing.T) {
+	// Quest line has type "main"; submitted form has type "side" — server should override to "main"
+	stub := &stubQuerier{
+		questLine: sqlc.GetQuestLineRow{
+			ID:        1,
+			Name:      "Main Line",
+			QuestType: pgtype.Text{String: "main", Valid: true},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleNewQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("title", "Inherited Quest")
+	form.Set("quest_type", "side")
+	form.Set("quest_line_id", "1")
+	req := httptest.NewRequest("POST", "/quests/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	if stub.lastCreateQuestParams.QuestType != "main" {
+		t.Errorf("expected quest type 'main' (inherited from line), got %q", stub.lastCreateQuestParams.QuestType)
 	}
 }
 
@@ -403,7 +446,7 @@ func TestHandleAllQuests(t *testing.T) {
 		quests: []sqlc.QuestsQuest{
 			{ID: 1, Title: "Quest A", QuestType: "side", Status: "active"},
 		},
-		questLines: []sqlc.QuestsQuestLine{
+		questLines: []sqlc.ListQuestLinesRow{
 			{ID: 1, Name: "Line 1"},
 		},
 	}
@@ -422,6 +465,33 @@ func TestHandleAllQuests(t *testing.T) {
 	}
 	if !stub.listActiveAndCompletedCalled {
 		t.Error("expected ListActiveAndCompletedQuests to be called")
+	}
+}
+
+func TestHandleAllQuests_typeGrouping(t *testing.T) {
+	// One main quest in a quest line, one side quest ungrouped → two type groups
+	stub := &stubQuerier{
+		quests: []sqlc.QuestsQuest{
+			{ID: 1, Title: "Main quest", QuestType: "main", Status: "active", QuestLineID: pgtype.Int8{Int64: 1, Valid: true}},
+			{ID: 2, Title: "Side quest", QuestType: "side", Status: "active"},
+		},
+		questLines: []sqlc.ListQuestLinesRow{
+			{ID: 1, Name: "Main Line"},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleAllQuests(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "types=2") {
+		t.Errorf("expected types=2 in body, got: %s", body)
 	}
 }
 
@@ -449,7 +519,7 @@ func TestHandleQuestLog(t *testing.T) {
 
 func TestHandleQuestLines(t *testing.T) {
 	stub := &stubQuerier{
-		questLines: []sqlc.QuestsQuestLine{
+		questLines: []sqlc.ListQuestLinesRow{
 			{ID: 1, Name: "Main Story"},
 			{ID: 2, Name: "Side Arc"},
 		},
@@ -466,6 +536,57 @@ func TestHandleQuestLines(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "count=2") {
 		t.Errorf("expected count=2 in body, got: %s", w.Body.String())
+	}
+}
+
+func TestHandleNewQuestLine_withType(t *testing.T) {
+	stub := &stubQuerier{}
+	tmpl := mustParseTestTemplates(t)
+	h := handleNewQuestLine(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("name", "Main Line")
+	form.Set("quest_type", "main")
+	req := httptest.NewRequest("POST", "/quest-lines/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	if !stub.lastCreateQuestLineParams.QuestType.Valid {
+		t.Error("expected quest_type to be set")
+	}
+	if stub.lastCreateQuestLineParams.QuestType.String != "main" {
+		t.Errorf("expected quest_type 'main', got %q", stub.lastCreateQuestLineParams.QuestType.String)
+	}
+}
+
+func TestHandleEditQuestLine_propagatesType(t *testing.T) {
+	stub := &stubQuerier{
+		questLine: sqlc.GetQuestLineRow{ID: 1, Name: "Arc", SortOrder: 0},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleEditQuestLine(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("name", "Arc")
+	form.Set("quest_type", "side")
+	req := httptest.NewRequest("POST", "/quest-lines/1/edit", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	if !stub.updateQuestTypeByLineCalled {
+		t.Error("expected UpdateQuestTypeByLine to be called when type is set")
+	}
+	if stub.lastUpdateQuestTypeByLineParams.QuestType != "side" {
+		t.Errorf("expected quest_type 'side', got %q", stub.lastUpdateQuestTypeByLineParams.QuestType)
 	}
 }
 
@@ -591,7 +712,7 @@ func TestHandleAllQuests_questCardClickable(t *testing.T) {
 		quests: []sqlc.QuestsQuest{
 			{ID: 1, Title: "Clickable Quest", QuestType: "side", Status: "active"},
 		},
-		questLines: []sqlc.QuestsQuestLine{
+		questLines: []sqlc.ListQuestLinesRow{
 			{ID: 1, Name: "Test Line"},
 		},
 	}

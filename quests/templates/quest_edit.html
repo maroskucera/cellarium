@@ -37,12 +37,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             <label for="description">Description</label>
             <textarea id="description" name="description">{{.Quest.Description}}</textarea>
 
+            <div id="quest-type-field">
             <label for="quest_type">Type</label>
             <select id="quest_type" name="quest_type">
                 <option value="main"{{if eq .Quest.QuestType "main"}} selected{{end}}>Main</option>
                 <option value="side"{{if eq .Quest.QuestType "side"}} selected{{end}}>Side</option>
                 <option value="daily"{{if eq .Quest.QuestType "daily"}} selected{{end}}>Daily</option>
             </select>
+            </div>
 
             <label for="quest_date">Due Date</label>
             <input type="date" id="quest_date" name="quest_date" value="{{.Quest.QuestDate}}">
@@ -51,7 +53,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             <select id="quest_line_id" name="quest_line_id">
                 <option value="0">— none —</option>
                 {{range .QuestLines}}
-                <option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>
+                <option value="{{.ID}}"{{if .Selected}} selected{{end}} data-quest-type="{{.QuestType}}">{{.Name}}</option>
                 {{end}}
             </select>
 
@@ -97,6 +99,25 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     </form>
 </main>
 <script src="/static/autocomplete.js"></script>
+<script>
+(function() {
+    var lineSelect = document.getElementById('quest_line_id');
+    var typeField = document.getElementById('quest_type');
+    var typeFieldDiv = document.getElementById('quest-type-field');
+    function syncType() {
+        var opt = lineSelect.options[lineSelect.selectedIndex];
+        var qt = opt ? opt.dataset.questType : '';
+        if (qt) {
+            typeField.value = qt;
+            typeFieldDiv.style.display = 'none';
+        } else {
+            typeFieldDiv.style.display = '';
+        }
+    }
+    lineSelect.addEventListener('change', syncType);
+    syncType();
+}());
+</script>
 </body>
 </html>
 {{end}}

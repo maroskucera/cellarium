@@ -15,18 +15,21 @@
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 -- name: CreateQuestLine :one
-INSERT INTO quests.quest_lines (name, description, sort_order)
-VALUES (@name, @description, @sort_order)
+INSERT INTO quests.quest_lines (name, description, sort_order, quest_type)
+VALUES (@name, @description, @sort_order, @quest_type)
 RETURNING id;
 
 -- name: GetQuestLine :one
-SELECT id, name, description, sort_order, created_at FROM quests.quest_lines WHERE id = @id;
+SELECT id, name, description, sort_order, quest_type, created_at FROM quests.quest_lines WHERE id = @id;
 
 -- name: ListQuestLines :many
-SELECT id, name, description, sort_order, created_at FROM quests.quest_lines ORDER BY sort_order ASC, id ASC;
+SELECT id, name, description, sort_order, quest_type, created_at FROM quests.quest_lines ORDER BY sort_order ASC, id ASC;
 
 -- name: UpdateQuestLine :exec
-UPDATE quests.quest_lines SET name = @name, description = @description, sort_order = @sort_order WHERE id = @id;
+UPDATE quests.quest_lines SET name = @name, description = @description, sort_order = @sort_order, quest_type = @quest_type WHERE id = @id;
+
+-- name: UpdateQuestLineSortOrder :exec
+UPDATE quests.quest_lines SET sort_order = @sort_order WHERE id = @id;
 
 -- name: DeleteQuestLine :exec
 DELETE FROM quests.quest_lines WHERE id = @id;

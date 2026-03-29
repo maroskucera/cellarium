@@ -209,6 +209,7 @@ func main() {
 	mux.Handle("GET /quest-lines/{id}/edit", handleEditQuestLine(queries, tmpl))
 	mux.Handle("POST /quest-lines/{id}/edit", handleEditQuestLine(queries, tmpl))
 	mux.Handle("POST /quest-lines/{id}/delete", handleDeleteQuestLine(queries))
+	mux.Handle("POST /quest-lines/reorder", handleReorderQuestLine(queries))
 
 	// API
 	mux.Handle("GET /api/quest-givers", handleQuestGivers(queries))

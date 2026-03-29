@@ -71,4 +71,7 @@ UPDATE quests.quests SET status = 'active', completed_at = NULL, quest_date = @q
 
 -- name: ListActiveAndCompletedQuests :many
 SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
-FROM quests.quests WHERE status IN ('active', 'completed') ORDER BY sort_order ASC, id ASC;
+FROM quests.quests WHERE status IN ('active', 'completed') ORDER BY quest_type ASC, sort_order ASC, id ASC;
+
+-- name: UpdateQuestTypeByLine :exec
+UPDATE quests.quests SET quest_type = @quest_type WHERE quest_line_id = @quest_line_id;

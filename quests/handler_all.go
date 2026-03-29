@@ -19,6 +19,7 @@ package main
 import (
 	"html/template"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -31,10 +32,23 @@ type questLineGroup struct {
 	Quests []questDisplay
 }
 
-type allQuestsData struct {
-	Nav       string
-	Groups    []questLineGroup
+type typeGroup struct {
+	TypeName  string
+	Lines     []questLineGroup
 	Ungrouped []questDisplay
+}
+
+type allQuestsData struct {
+	Nav   string
+	Types []typeGroup
+}
+
+var typeOrder = []string{"main", "side", "daily"}
+
+var typeDisplayNames = map[string]string{
+	"main":  "Main",
+	"side":  "Side",
+	"daily": "Daily",
 }
 
 func handleAllQuests(q sqlc.Querier, tmpl *template.Template) http.Handler {
@@ -60,30 +74,58 @@ func handleAllQuests(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			return
 		}
 
-		// Build a map of quest line ID -> group index
-		lineIndex := make(map[int64]int, len(lines))
-		groups := make([]questLineGroup, 0, len(lines))
-		for _, l := range lines {
-			lineIndex[l.ID] = len(groups)
-			groups = append(groups, questLineGroup{ID: l.ID, Name: l.Name})
+		// Build line name lookup and stable sort-order index
+		lineNames := make(map[int64]string, len(lines))
+		lineOrder := make(map[int64]int, len(lines))
+		for i, l := range lines {
+			lineNames[l.ID] = l.Name
+			lineOrder[l.ID] = i
+		}
+
+		// Build type groups (keyed by type name)
+		typeGroupMap := make(map[string]*typeGroup, len(typeOrder))
+		for _, t := range typeOrder {
+			typeGroupMap[t] = &typeGroup{TypeName: typeDisplayNames[t]}
+		}
+
+		// Track quest line groups within each type: (typeName, lineID) -> index in tg.Lines
+		type lineKey struct {
+			typeName string
+			lineID   int64
+		}
+		lineGroupIdx := make(map[lineKey]int)
+
+		for _, quest := range quests {
+			tg := typeGroupMap[quest.QuestType]
+			if tg == nil {
+				continue
+			}
+			d := toQuestDisplay(quest)
+			if quest.QuestLineID.Valid {
+				lk := lineKey{quest.QuestType, quest.QuestLineID.Int64}
+				idx, ok := lineGroupIdx[lk]
+				if !ok {
+					idx = len(tg.Lines)
+					tg.Lines = append(tg.Lines, questLineGroup{
+						ID:   quest.QuestLineID.Int64,
+						Name: lineNames[quest.QuestLineID.Int64],
+					})
+					lineGroupIdx[lk] = idx
+				}
+				tg.Lines[idx].Quests = append(tg.Lines[idx].Quests, d)
+			} else {
+				tg.Ungrouped = append(tg.Ungrouped, d)
+			}
 		}
 
 		data := allQuestsData{Nav: "quests"}
-		for _, quest := range quests {
-			d := toQuestDisplay(quest)
-			if quest.QuestLineID.Valid {
-				if idx, ok := lineIndex[quest.QuestLineID.Int64]; ok {
-					groups[idx].Quests = append(groups[idx].Quests, d)
-					continue
-				}
-			}
-			data.Ungrouped = append(data.Ungrouped, d)
-		}
-
-		// Only include groups that have quests
-		for _, g := range groups {
-			if len(g.Quests) > 0 {
-				data.Groups = append(data.Groups, g)
+		for _, t := range typeOrder {
+			tg := typeGroupMap[t]
+			sort.Slice(tg.Lines, func(i, j int) bool {
+				return lineOrder[tg.Lines[i].ID] < lineOrder[tg.Lines[j].ID]
+			})
+			if len(tg.Lines) > 0 || len(tg.Ungrouped) > 0 {
+				data.Types = append(data.Types, *tg)
 			}
 		}
 

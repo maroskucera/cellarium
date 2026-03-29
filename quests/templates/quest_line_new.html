@@ -40,8 +40,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             <label for="description">Description</label>
             <textarea id="description" name="description"></textarea>
 
-            <label for="sort_order">Sort Order</label>
-            <input type="number" id="sort_order" name="sort_order" value="0" min="0">
+            <label for="quest_type">Type</label>
+            <select id="quest_type" name="quest_type">
+                <option value="">— none —</option>
+                <option value="main">Main</option>
+                <option value="side">Side</option>
+                <option value="daily">Daily</option>
+            </select>
         </fieldset>
         <button type="submit">Create Quest Line</button>
         <p><a href="/quest-lines" class="btn btn-secondary">Cancel</a></p>

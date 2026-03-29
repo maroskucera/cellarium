@@ -134,7 +134,7 @@ func (q *Queries) GetQuest(ctx context.Context, id int64) (QuestsQuest, error) {
 
 const listActiveAndCompletedQuests = `-- name: ListActiveAndCompletedQuests :many
 SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
-FROM quests.quests WHERE status IN ('active', 'completed') ORDER BY sort_order ASC, id ASC
+FROM quests.quests WHERE status IN ('active', 'completed') ORDER BY quest_type ASC, sort_order ASC, id ASC
 `
 
 func (q *Queries) ListActiveAndCompletedQuests(ctx context.Context) ([]QuestsQuest, error) {
@@ -461,5 +461,19 @@ type UpdateQuestSortOrderParams struct {
 
 func (q *Queries) UpdateQuestSortOrder(ctx context.Context, arg UpdateQuestSortOrderParams) error {
 	_, err := q.db.Exec(ctx, updateQuestSortOrder, arg.SortOrder, arg.ID)
+	return err
+}
+
+const updateQuestTypeByLine = `-- name: UpdateQuestTypeByLine :exec
+UPDATE quests.quests SET quest_type = $1 WHERE quest_line_id = $2
+`
+
+type UpdateQuestTypeByLineParams struct {
+	QuestType   string      `json:"quest_type"`
+	QuestLineID pgtype.Int8 `json:"quest_line_id"`
+}
+
+func (q *Queries) UpdateQuestTypeByLine(ctx context.Context, arg UpdateQuestTypeByLineParams) error {
+	_, err := q.db.Exec(ctx, updateQuestTypeByLine, arg.QuestType, arg.QuestLineID)
 	return err
 }

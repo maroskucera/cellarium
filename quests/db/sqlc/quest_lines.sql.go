@@ -13,8 +13,8 @@ import (
 
 const createQuestLine = `-- name: CreateQuestLine :one
 
-INSERT INTO quests.quest_lines (name, description, sort_order)
-VALUES ($1, $2, $3)
+INSERT INTO quests.quest_lines (name, description, sort_order, quest_type)
+VALUES ($1, $2, $3, $4)
 RETURNING id
 `
 
@@ -22,6 +22,7 @@ type CreateQuestLineParams struct {
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
 	SortOrder   int32       `json:"sort_order"`
+	QuestType   pgtype.Text `json:"quest_type"`
 }
 
 // Cellarium Quests — quest line queries
@@ -40,7 +41,12 @@ type CreateQuestLineParams struct {
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 func (q *Queries) CreateQuestLine(ctx context.Context, arg CreateQuestLineParams) (int64, error) {
-	row := q.db.QueryRow(ctx, createQuestLine, arg.Name, arg.Description, arg.SortOrder)
+	row := q.db.QueryRow(ctx, createQuestLine,
+		arg.Name,
+		arg.Description,
+		arg.SortOrder,
+		arg.QuestType,
+	)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
@@ -56,40 +62,60 @@ func (q *Queries) DeleteQuestLine(ctx context.Context, id int64) error {
 }
 
 const getQuestLine = `-- name: GetQuestLine :one
-SELECT id, name, description, sort_order, created_at FROM quests.quest_lines WHERE id = $1
+SELECT id, name, description, sort_order, quest_type, created_at FROM quests.quest_lines WHERE id = $1
 `
 
-func (q *Queries) GetQuestLine(ctx context.Context, id int64) (QuestsQuestLine, error) {
+type GetQuestLineRow struct {
+	ID          int64              `json:"id"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	SortOrder   int32              `json:"sort_order"`
+	QuestType   pgtype.Text        `json:"quest_type"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetQuestLine(ctx context.Context, id int64) (GetQuestLineRow, error) {
 	row := q.db.QueryRow(ctx, getQuestLine, id)
-	var i QuestsQuestLine
+	var i GetQuestLineRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Description,
 		&i.SortOrder,
+		&i.QuestType,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const listQuestLines = `-- name: ListQuestLines :many
-SELECT id, name, description, sort_order, created_at FROM quests.quest_lines ORDER BY sort_order ASC, id ASC
+SELECT id, name, description, sort_order, quest_type, created_at FROM quests.quest_lines ORDER BY sort_order ASC, id ASC
 `
 
-func (q *Queries) ListQuestLines(ctx context.Context) ([]QuestsQuestLine, error) {
+type ListQuestLinesRow struct {
+	ID          int64              `json:"id"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	SortOrder   int32              `json:"sort_order"`
+	QuestType   pgtype.Text        `json:"quest_type"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListQuestLines(ctx context.Context) ([]ListQuestLinesRow, error) {
 	rows, err := q.db.Query(ctx, listQuestLines)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []QuestsQuestLine
+	var items []ListQuestLinesRow
 	for rows.Next() {
-		var i QuestsQuestLine
+		var i ListQuestLinesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Description,
 			&i.SortOrder,
+			&i.QuestType,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -103,13 +129,14 @@ func (q *Queries) ListQuestLines(ctx context.Context) ([]QuestsQuestLine, error)
 }
 
 const updateQuestLine = `-- name: UpdateQuestLine :exec
-UPDATE quests.quest_lines SET name = $1, description = $2, sort_order = $3 WHERE id = $4
+UPDATE quests.quest_lines SET name = $1, description = $2, sort_order = $3, quest_type = $4 WHERE id = $5
 `
 
 type UpdateQuestLineParams struct {
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
 	SortOrder   int32       `json:"sort_order"`
+	QuestType   pgtype.Text `json:"quest_type"`
 	ID          int64       `json:"id"`
 }
 
@@ -118,7 +145,22 @@ func (q *Queries) UpdateQuestLine(ctx context.Context, arg UpdateQuestLineParams
 		arg.Name,
 		arg.Description,
 		arg.SortOrder,
+		arg.QuestType,
 		arg.ID,
 	)
+	return err
+}
+
+const updateQuestLineSortOrder = `-- name: UpdateQuestLineSortOrder :exec
+UPDATE quests.quest_lines SET sort_order = $1 WHERE id = $2
+`
+
+type UpdateQuestLineSortOrderParams struct {
+	SortOrder int32 `json:"sort_order"`
+	ID        int64 `json:"id"`
+}
+
+func (q *Queries) UpdateQuestLineSortOrder(ctx context.Context, arg UpdateQuestLineSortOrderParams) error {
+	_, err := q.db.Exec(ctx, updateQuestLineSortOrder, arg.SortOrder, arg.ID)
 	return err
 }

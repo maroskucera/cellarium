@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -27,14 +28,14 @@ import (
 
 type questLinesData struct {
 	Nav        string
-	QuestLines []sqlc.QuestsQuestLine
+	QuestLines []sqlc.ListQuestLinesRow
 }
 
 type questLineFormData struct {
 	Nav    string
 	Title  string
 	Action string
-	Line   *sqlc.QuestsQuestLine
+	Line   *sqlc.GetQuestLineRow
 	Errors map[string]string
 }
 
@@ -49,6 +50,13 @@ func handleQuestLines(q sqlc.Querier, tmpl *template.Template) http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		renderTemplate(w, tmpl, "quest_lines", data)
 	})
+}
+
+func parseQuestLineType(s string) pgtype.Text {
+	if s == "main" || s == "side" || s == "daily" {
+		return pgtype.Text{String: s, Valid: true}
+	}
+	return pgtype.Text{}
 }
 
 func handleNewQuestLine(q sqlc.Querier, tmpl *template.Template) http.Handler {
@@ -84,6 +92,7 @@ func handleNewQuestLine(q sqlc.Querier, tmpl *template.Template) http.Handler {
 				Name:        name,
 				Description: desc,
 				SortOrder:   sortOrder,
+				QuestType:   parseQuestLineType(r.FormValue("quest_type")),
 			}); err != nil {
 				http.Error(w, "database error", http.StatusInternalServerError)
 				return
@@ -144,14 +153,26 @@ func handleEditQuestLine(q sqlc.Querier, tmpl *template.Template) http.Handler {
 					sortOrder = int32(n)
 				}
 			}
+			questType := parseQuestLineType(r.FormValue("quest_type"))
 			if err := q.UpdateQuestLine(ctx, sqlc.UpdateQuestLineParams{
 				ID:          id,
 				Name:        name,
 				Description: desc,
 				SortOrder:   sortOrder,
+				QuestType:   questType,
 			}); err != nil {
 				http.Error(w, "database error", http.StatusInternalServerError)
 				return
+			}
+			// Propagate type to all quests in this line when type is set
+			if questType.Valid {
+				if err := q.UpdateQuestTypeByLine(ctx, sqlc.UpdateQuestTypeByLineParams{
+					QuestType:   questType.String,
+					QuestLineID: pgtype.Int8{Int64: id, Valid: true},
+				}); err != nil {
+					http.Error(w, "database error", http.StatusInternalServerError)
+					return
+				}
 			}
 			http.Redirect(w, r, "/quest-lines", http.StatusSeeOther)
 			return
@@ -165,6 +186,24 @@ func handleEditQuestLine(q sqlc.Querier, tmpl *template.Template) http.Handler {
 		}
 		w.Header().Set("Cache-Control", "no-store")
 		renderTemplate(w, tmpl, "quest_line_edit", data)
+	})
+}
+
+func handleReorderQuestLine(q sqlc.Querier) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req reorderRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+		if err := q.UpdateQuestLineSortOrder(r.Context(), sqlc.UpdateQuestLineSortOrderParams{
+			ID:        req.ID,
+			SortOrder: req.SortOrder,
+		}); err != nil {
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	})
 }
 

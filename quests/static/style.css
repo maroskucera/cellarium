@@ -267,6 +267,13 @@ select:focus {
 .recurrence-row { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
 .recurrence-row input[type="number"] { width: 80px; }
 
+.btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 1rem; }
+.btn-row button[type="submit"] { width: auto; margin-top: 0; }
+
+.quest-card-link { flex: 1; text-decoration: none; color: inherit; display: flex; }
+.quest-card-link:hover .quest-card-body { background: var(--progress-bg); }
+.quest-card-link:focus { outline: 3px solid var(--focus-outline); outline-offset: -3px; }
+
 textarea { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 0; background: var(--bg); color: var(--text); font-size: 1rem; font-family: inherit; min-height: 80px; resize: vertical; }
 textarea:focus { outline: 3px solid var(--focus-outline); outline-offset: 2px; }
 

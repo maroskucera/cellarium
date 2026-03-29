@@ -87,13 +87,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             </div>
         </fieldset>
 
-        <button type="submit">Save Changes</button>
-        <p style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem">
+        <div class="btn-row">
+            <button type="submit">Save Changes</button>
             <a href="/" class="btn btn-secondary">Cancel</a>
-            <form method="post" action="/quests/{{.Quest.ID}}/delete" style="display:inline">
+            <form method="post" action="/quests/{{.Quest.ID}}/delete" class="inline-form">
                 <button type="submit" class="btn-danger-sm" onclick="return confirm('Delete this quest?')">Delete</button>
             </form>
-        </p>
+        </div>
     </form>
 </main>
 <script src="/static/autocomplete.js"></script>

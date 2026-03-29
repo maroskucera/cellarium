@@ -40,5 +40,9 @@
                     cb.checked = !completing;
                 });
         });
+        // Prevent clicking the checkbox from navigating to the edit page
+        cb.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
     });
 }());

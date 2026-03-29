@@ -35,16 +35,17 @@ type todayData struct {
 }
 
 type questDisplay struct {
-	ID            int64
-	Title         string
-	Description   string
-	QuestDate     string // "2 Jan" or ""
-	QuestGiver    string
-	QuestLineID   int64
-	QuestLineName string
-	HasDate       bool
-	Status        string
-	Recurring     bool
+	ID             int64
+	Title          string
+	Description    string
+	QuestDate      string // "2 Jan" or ""
+	QuestGiver     string
+	QuestLineID    int64
+	QuestLineName  string
+	HasDate        bool
+	HasDescription bool
+	Status         string
+	Recurring      bool
 }
 
 func toQuestDisplay(q sqlc.QuestsQuest) questDisplay {
@@ -56,6 +57,7 @@ func toQuestDisplay(q sqlc.QuestsQuest) questDisplay {
 	}
 	if q.Description.Valid {
 		d.Description = q.Description.String
+		d.HasDescription = q.Description.String != ""
 	}
 	if q.QuestGiver.Valid {
 		d.QuestGiver = q.QuestGiver.String

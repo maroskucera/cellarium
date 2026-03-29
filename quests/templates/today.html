@@ -40,20 +40,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         {{range .MainQuests}}
             <li class="quest-card" data-quest-id="{{.ID}}">
                 <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
-                <div class="quest-card-body">
-                    <p class="quest-title">{{.Title}}</p>
-                    {{if or .QuestDate .QuestGiver}}
-                    <p class="quest-meta">
-                        {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
-                        {{if .QuestGiver}} · {{.QuestGiver}}{{end}}
-                        {{if .Recurring}} · 🔁{{end}}
-                    </p>
-                    {{end}}
-                    {{if .Description}}<p class="quest-meta">{{.Description}}</p>{{end}}
-                    <div class="quest-actions">
-                        <a href="/quests/{{.ID}}/edit" class="btn btn-secondary">Edit</a>
+                <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                    <div class="quest-card-body">
+                        <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                        {{if or .QuestGiver .Recurring}}
+                        <p class="quest-meta">
+                            {{if .QuestGiver}}{{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if .QuestGiver}} · {{end}}🔁{{end}}
+                        </p>
+                        {{end}}
                     </div>
-                </div>
+                </a>
             </li>
         {{end}}
         </ul>
@@ -67,20 +64,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         {{range .SideQuests}}
             <li class="quest-card" data-quest-id="{{.ID}}">
                 <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
-                <div class="quest-card-body">
-                    <p class="quest-title">{{.Title}}</p>
-                    {{if or .QuestDate .QuestGiver}}
-                    <p class="quest-meta">
-                        {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
-                        {{if .QuestGiver}} · {{.QuestGiver}}{{end}}
-                        {{if .Recurring}} · 🔁{{end}}
-                    </p>
-                    {{end}}
-                    {{if .Description}}<p class="quest-meta">{{.Description}}</p>{{end}}
-                    <div class="quest-actions">
-                        <a href="/quests/{{.ID}}/edit" class="btn btn-secondary">Edit</a>
+                <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                    <div class="quest-card-body">
+                        <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                        {{if or .QuestGiver .Recurring}}
+                        <p class="quest-meta">
+                            {{if .QuestGiver}}{{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if .QuestGiver}} · {{end}}🔁{{end}}
+                        </p>
+                        {{end}}
                     </div>
-                </div>
+                </a>
             </li>
         {{end}}
         </ul>
@@ -94,20 +88,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         {{range .DailyQuests}}
             <li class="quest-card" data-quest-id="{{.ID}}">
                 <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
-                <div class="quest-card-body">
-                    <p class="quest-title">{{.Title}}</p>
-                    {{if or .QuestDate .QuestGiver}}
-                    <p class="quest-meta">
-                        {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
-                        {{if .QuestGiver}} · {{.QuestGiver}}{{end}}
-                        {{if .Recurring}} · 🔁{{end}}
-                    </p>
-                    {{end}}
-                    {{if .Description}}<p class="quest-meta">{{.Description}}</p>{{end}}
-                    <div class="quest-actions">
-                        <a href="/quests/{{.ID}}/edit" class="btn btn-secondary">Edit</a>
+                <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                    <div class="quest-card-body">
+                        <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                        {{if or .QuestGiver .Recurring}}
+                        <p class="quest-meta">
+                            {{if .QuestGiver}}{{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if .QuestGiver}} · {{end}}🔁{{end}}
+                        </p>
+                        {{end}}
                     </div>
-                </div>
+                </a>
             </li>
         {{end}}
         </ul>

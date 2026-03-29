@@ -39,8 +39,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                 <strong>{{.Name}}</strong>
                 {{if .Description.Valid}}<p style="margin:0.25rem 0 0;font-size:0.875rem;color:var(--text-muted)">{{.Description.String}}</p>{{end}}
             </div>
-            <div style="display:flex;gap:0.5rem">
-                <a href="/quest-lines/{{.ID}}/edit" class="btn btn-secondary" style="font-size:0.75rem;padding:0.25rem 0.75rem;min-height:44px;display:inline-flex;align-items:center">Edit</a>
+            <div class="quest-actions">
+                <a href="/quest-lines/{{.ID}}/edit" class="btn btn-secondary">Edit</a>
                 <form method="post" action="/quest-lines/{{.ID}}/delete" class="inline-form">
                     <button type="submit" class="btn-danger-sm" onclick="return confirm('Delete this quest line?')">Delete</button>
                 </form>

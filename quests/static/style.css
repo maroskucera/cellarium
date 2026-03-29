@@ -246,7 +246,16 @@ select:focus {
 .quest-card-body { flex: 1; }
 .quest-title { font-weight: 600; margin: 0 0 0.25rem; }
 .quest-meta { font-size: 0.8125rem; color: var(--text-muted); margin: 0 0 0.25rem; }
-.quest-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.quest-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; align-items: center; }
+.quest-actions button[type="submit"],
+.quest-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    margin-top: 0;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+}
 .drag-handle { cursor: grab; color: var(--text-muted); padding: 0.25rem; font-size: 1.25rem; line-height: 1; min-height: 44px; display: flex; align-items: center; }
 .quest-type { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
 .status-completed { color: var(--text-muted); text-decoration: line-through; }

@@ -1,0 +1,102 @@
+<!--
+Cellarium Quests — edit quest form
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "quest_edit"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quests — Edit Quest</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+    {{template "_nav" .Nav}}
+    <h1>Edit Quest</h1>
+    <form method="post" action="{{.Action}}">
+        <fieldset>
+            <legend>Quest Details</legend>
+
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" value="{{.Quest.Title}}" required autofocus>
+
+            <label for="description">Description</label>
+            <textarea id="description" name="description">{{.Quest.Description}}</textarea>
+
+            <label for="quest_type">Type</label>
+            <select id="quest_type" name="quest_type">
+                <option value="main"{{if eq .Quest.QuestType "main"}} selected{{end}}>Main Quest</option>
+                <option value="side"{{if eq .Quest.QuestType "side"}} selected{{end}}>Side Quest</option>
+                <option value="daily"{{if eq .Quest.QuestType "daily"}} selected{{end}}>Daily Quest</option>
+            </select>
+
+            <label for="quest_date">Due Date</label>
+            <input type="date" id="quest_date" name="quest_date" value="{{.Quest.QuestDate}}">
+
+            <label for="quest_line_id">Quest Line</label>
+            <select id="quest_line_id" name="quest_line_id">
+                <option value="0">— none —</option>
+                {{range .QuestLines}}
+                <option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>
+                {{end}}
+            </select>
+
+            <label for="quest_giver">Quest Giver</label>
+            <input type="text" id="quest_giver" name="quest_giver" value="{{.Quest.QuestGiver}}" list="quest-givers-list">
+            <datalist id="quest-givers-list"></datalist>
+
+            <label for="reminder_time">Reminder Time</label>
+            <input type="time" id="reminder_time" name="reminder_time" value="{{.Quest.ReminderTime}}">
+        </fieldset>
+
+        <fieldset>
+            <legend>Recurrence</legend>
+            <label for="recurrence_type">Repeat</label>
+            <select id="recurrence_type" name="recurrence_type">
+                <option value="none"{{if eq .Quest.RecurrenceType "none"}} selected{{end}}>Never</option>
+                <option value="every"{{if eq .Quest.RecurrenceType "every"}} selected{{end}}>Every N</option>
+                <option value="after_completion"{{if eq .Quest.RecurrenceType "after_completion"}} selected{{end}}>After completion</option>
+            </select>
+            <div class="recurrence-row">
+                <div>
+                    <label for="recurrence_n">Every</label>
+                    <input type="number" id="recurrence_n" name="recurrence_n" value="{{.Quest.RecurrenceN}}" min="1" max="365">
+                </div>
+                <div>
+                    <label for="recurrence_unit">Unit</label>
+                    <select id="recurrence_unit" name="recurrence_unit">
+                        <option value="days"{{if eq .Quest.RecurrenceUnit "days"}} selected{{end}}>Days</option>
+                        <option value="weeks"{{if eq .Quest.RecurrenceUnit "weeks"}} selected{{end}}>Weeks</option>
+                        <option value="months"{{if eq .Quest.RecurrenceUnit "months"}} selected{{end}}>Months</option>
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
+        <button type="submit">Save Changes</button>
+        <p style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem">
+            <a href="/" class="btn btn-secondary">Cancel</a>
+            <form method="post" action="/quests/{{.Quest.ID}}/delete" style="display:inline">
+                <button type="submit" class="btn-danger-sm" onclick="return confirm('Delete this quest?')">Delete</button>
+            </form>
+        </p>
+    </form>
+</main>
+<script src="/static/autocomplete.js"></script>
+</body>
+</html>
+{{end}}

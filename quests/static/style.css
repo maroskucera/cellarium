@@ -1,0 +1,265 @@
+/*
+ * Cellarium Quests — stylesheet (WCAG 2.2 AAA monochrome design)
+ * Copyright (C) 2026 Maroš Kučera
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #ffffff;
+    --text: #000000;
+    --text-muted: #595959;
+    --border: #000000;
+    --btn-bg: #000000;
+    --btn-text: #ffffff;
+    --btn-hover-bg: #ffffff;
+    --btn-hover-text: #000000;
+    --focus-outline: #000000;
+    --progress-bg: #e0e0e0;
+    --progress-fill: #000000;
+    --card-bg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #000000;
+        --text: #ffffff;
+        --text-muted: #a6a6a6;
+        --border: #ffffff;
+        --btn-bg: #ffffff;
+        --btn-text: #000000;
+        --btn-hover-bg: #000000;
+        --btn-hover-text: #ffffff;
+        --focus-outline: #ffffff;
+        --progress-bg: #333333;
+        --progress-fill: #ffffff;
+        --card-bg: #111111;
+    }
+}
+
+body {
+    margin: 0;
+    padding: 1rem;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+}
+
+main {
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+h1 {
+    margin: 0 0 0.5rem;
+    color: var(--text);
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+h2 {
+    margin: 1.5rem 0 0.75rem;
+    font-size: 1.1rem;
+    color: var(--text);
+}
+
+/* Buttons */
+
+.btn,
+button[type="submit"] {
+    display: inline-block;
+    padding: 0.625rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    min-height: 44px;
+    line-height: 1.5;
+}
+
+button[type="submit"] {
+    display: block;
+    width: 100%;
+    margin-top: 1rem;
+    font-size: 1rem;
+}
+
+.btn:hover,
+button[type="submit"]:hover {
+    background: var(--btn-hover-bg);
+    color: var(--btn-hover-text);
+}
+
+.btn:focus,
+button[type="submit"]:focus {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
+}
+
+.btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+}
+
+.btn-secondary:hover {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+}
+
+.btn-danger-sm {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.75rem;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.btn-danger-sm:hover {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+}
+
+.btn-danger-sm:focus {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
+}
+
+/* Forms */
+
+fieldset {
+    border: 1px solid var(--border);
+    border-radius: 0;
+    padding: 1rem;
+    margin: 0 0 1rem;
+}
+
+legend {
+    font-weight: 600;
+    color: var(--text);
+    padding: 0 0.5rem;
+}
+
+label {
+    display: block;
+    margin: 0.75rem 0 0.25rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+input[type="text"],
+input[type="date"],
+select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+    font-family: inherit;
+    min-height: 44px;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+input[type="text"]::placeholder {
+    color: var(--text-muted);
+}
+
+input[type="text"]:focus,
+input[type="date"]:focus,
+select:focus {
+    outline: 3px solid var(--focus-outline);
+    outline-offset: 2px;
+}
+
+/* Inline form */
+
+.inline-form {
+    display: inline;
+}
+
+/* Empty state */
+
+.empty-state {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+    border: 1px dashed var(--border);
+}
+
+/* Screen reader only */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Site nav */
+.site-nav { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+.site-nav a { padding: 0.5rem 1rem; text-decoration: none; color: var(--text-muted); font-size: 0.875rem; font-weight: 600; border-bottom: 2px solid transparent; min-height: 44px; display: flex; align-items: center; }
+.site-nav a:hover { color: var(--text); }
+.site-nav a.active { color: var(--text); border-bottom-color: var(--text); }
+.site-nav a:focus { outline: 3px solid var(--focus-outline); outline-offset: -3px; }
+
+/* Quest cards */
+.quest-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; list-style: none; padding: 0; }
+.quest-card { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; border: 1px solid var(--border); background: var(--card-bg); }
+.quest-card[draggable="true"] { cursor: grab; }
+.quest-card.drag-over { outline: 2px dashed var(--border); }
+.quest-card-body { flex: 1; }
+.quest-title { font-weight: 600; margin: 0 0 0.25rem; }
+.quest-meta { font-size: 0.8125rem; color: var(--text-muted); margin: 0 0 0.25rem; }
+.quest-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.drag-handle { cursor: grab; color: var(--text-muted); padding: 0.25rem; font-size: 1.25rem; line-height: 1; min-height: 44px; display: flex; align-items: center; }
+.quest-type { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.status-completed { color: var(--text-muted); text-decoration: line-through; }
+.status-failed { color: var(--text-muted); }
+.log-day { margin-bottom: 1.5rem; }
+.log-day-header { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--border); }
+.quest-line-group { margin-bottom: 1.5rem; }
+.quest-line-name { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 0.5rem; }
+.recurrence-row { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
+.recurrence-row input[type="number"] { width: 80px; }
+
+textarea { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 0; background: var(--bg); color: var(--text); font-size: 1rem; font-family: inherit; min-height: 80px; resize: vertical; }
+textarea:focus { outline: 3px solid var(--focus-outline); outline-offset: 2px; }
+
+input[type="time"], input[type="number"] { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 0; background: var(--bg); color: var(--text); font-size: 1rem; font-family: inherit; min-height: 44px; -webkit-appearance: none; appearance: none; }
+input[type="time"]:focus, input[type="number"]:focus { outline: 3px solid var(--focus-outline); outline-offset: 2px; }

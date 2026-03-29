@@ -1,0 +1,60 @@
+<!--
+Cellarium Quests — quest lines list page
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "quest_lines"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quests — Quest Lines</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+    {{template "_nav" .Nav}}
+    <header>
+        <h1>Quest Lines</h1>
+        <p><a href="/quest-lines/new" class="btn btn-secondary">+ New Quest Line</a></p>
+    </header>
+
+    {{if .QuestLines}}
+    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.5rem">
+    {{range .QuestLines}}
+        <li style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;border:1px solid var(--border);background:var(--card-bg)">
+            <div style="flex:1">
+                <strong>{{.Name}}</strong>
+                {{if .Description.Valid}}<p style="margin:0.25rem 0 0;font-size:0.875rem;color:var(--text-muted)">{{.Description.String}}</p>{{end}}
+            </div>
+            <div style="display:flex;gap:0.5rem">
+                <a href="/quest-lines/{{.ID}}/edit" class="btn btn-secondary" style="font-size:0.75rem;padding:0.25rem 0.75rem;min-height:44px;display:inline-flex;align-items:center">Edit</a>
+                <form method="post" action="/quest-lines/{{.ID}}/delete" class="inline-form">
+                    <button type="submit" class="btn-danger-sm" onclick="return confirm('Delete this quest line?')">Delete</button>
+                </form>
+            </div>
+        </li>
+    {{end}}
+    </ul>
+    {{else}}
+    <div class="empty-state">
+        <p>No quest lines yet.</p>
+        <p><a href="/quest-lines/new" class="btn">Create a quest line</a></p>
+    </div>
+    {{end}}
+</main>
+</body>
+</html>
+{{end}}

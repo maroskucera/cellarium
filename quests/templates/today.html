@@ -1,0 +1,146 @@
+<!--
+Cellarium Quests — today page
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "today"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quests — Today</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="manifest" href="/manifest.json">
+</head>
+<body>
+<main>
+    {{template "_nav" .Nav}}
+    <header>
+        <h1>{{.Date}}</h1>
+        <p><a href="/quests/new" class="btn btn-secondary">+ New Quest</a>
+        <button id="push-toggle" class="btn btn-secondary" style="margin-left:0.5rem">Enable Notifications</button></p>
+    </header>
+
+    {{if .MainQuests}}
+    <section>
+        <h2>Main Quests</h2>
+        <ul class="quest-list" aria-label="Main quests">
+        {{range .MainQuests}}
+            <li class="quest-card" data-quest-id="{{.ID}}">
+                <span class="drag-handle" aria-hidden="true">⠿</span>
+                <div class="quest-card-body">
+                    <p class="quest-title">{{.Title}}</p>
+                    {{if or .QuestDate .QuestGiver}}
+                    <p class="quest-meta">
+                        {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
+                        {{if .QuestGiver}} · {{.QuestGiver}}{{end}}
+                        {{if .Recurring}} · 🔁{{end}}
+                    </p>
+                    {{end}}
+                    {{if .Description}}<p class="quest-meta">{{.Description}}</p>{{end}}
+                    <div class="quest-actions">
+                        <form method="post" action="/quests/{{.ID}}/complete" class="inline-form">
+                            <button type="submit" class="btn" style="font-size:0.75rem;padding:0.25rem 0.75rem;min-height:44px">Complete</button>
+                        </form>
+                        <form method="post" action="/quests/{{.ID}}/fail" class="inline-form">
+                            <button type="submit" class="btn-danger-sm">Fail</button>
+                        </form>
+                        <a href="/quests/{{.ID}}/edit" class="btn btn-secondary" style="font-size:0.75rem;padding:0.25rem 0.75rem;min-height:44px;display:inline-flex;align-items:center">Edit</a>
+                    </div>
+                </div>
+            </li>
+        {{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    {{if .SideQuests}}
+    <section>
+        <h2>Side Quests</h2>
+        <ul class="quest-list" aria-label="Side quests">
+        {{range .SideQuests}}
+            <li class="quest-card" data-quest-id="{{.ID}}">
+                <span class="drag-handle" aria-hidden="true">⠿</span>
+                <div class="quest-card-body">
+                    <p class="quest-title">{{.Title}}</p>
+                    {{if or .QuestDate .QuestGiver}}
+                    <p class="quest-meta">
+                        {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
+                        {{if .QuestGiver}} · {{.QuestGiver}}{{end}}
+                        {{if .Recurring}} · 🔁{{end}}
+                    </p>
+                    {{end}}
+                    {{if .Description}}<p class="quest-meta">{{.Description}}</p>{{end}}
+                    <div class="quest-actions">
+                        <form method="post" action="/quests/{{.ID}}/complete" class="inline-form">
+                            <button type="submit" class="btn" style="font-size:0.75rem;padding:0.25rem 0.75rem;min-height:44px">Complete</button>
+                        </form>
+                        <form method="post" action="/quests/{{.ID}}/fail" class="inline-form">
+                            <button type="submit" class="btn-danger-sm">Fail</button>
+                        </form>
+                        <a href="/quests/{{.ID}}/edit" class="btn btn-secondary" style="font-size:0.75rem;padding:0.25rem 0.75rem;min-height:44px;display:inline-flex;align-items:center">Edit</a>
+                    </div>
+                </div>
+            </li>
+        {{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    {{if .DailyQuests}}
+    <section>
+        <h2>Daily Quests</h2>
+        <ul class="quest-list" aria-label="Daily quests">
+        {{range .DailyQuests}}
+            <li class="quest-card" data-quest-id="{{.ID}}">
+                <span class="drag-handle" aria-hidden="true">⠿</span>
+                <div class="quest-card-body">
+                    <p class="quest-title">{{.Title}}</p>
+                    {{if or .QuestDate .QuestGiver}}
+                    <p class="quest-meta">
+                        {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
+                        {{if .QuestGiver}} · {{.QuestGiver}}{{end}}
+                        {{if .Recurring}} · 🔁{{end}}
+                    </p>
+                    {{end}}
+                    {{if .Description}}<p class="quest-meta">{{.Description}}</p>{{end}}
+                    <div class="quest-actions">
+                        <form method="post" action="/quests/{{.ID}}/complete" class="inline-form">
+                            <button type="submit" class="btn" style="font-size:0.75rem;padding:0.25rem 0.75rem;min-height:44px">Complete</button>
+                        </form>
+                        <form method="post" action="/quests/{{.ID}}/fail" class="inline-form">
+                            <button type="submit" class="btn-danger-sm">Fail</button>
+                        </form>
+                        <a href="/quests/{{.ID}}/edit" class="btn btn-secondary" style="font-size:0.75rem;padding:0.25rem 0.75rem;min-height:44px;display:inline-flex;align-items:center">Edit</a>
+                    </div>
+                </div>
+            </li>
+        {{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    {{if and (eq (len .MainQuests) 0) (eq (len .SideQuests) 0) (eq (len .DailyQuests) 0)}}
+    <div class="empty-state">
+        <p>No quests for today.</p>
+        <p><a href="/quests/new" class="btn">Add a quest</a></p>
+    </div>
+    {{end}}
+</main>
+<script src="/static/reorder.js"></script>
+<script src="/static/push.js"></script>
+</body>
+</html>
+{{end}}

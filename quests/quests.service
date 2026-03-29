@@ -1,0 +1,12 @@
+[Unit]
+Description=Cellarium Quests
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/quests
+Restart=on-failure
+EnvironmentFile=/etc/cellarium/quests.env
+
+[Install]
+WantedBy=multi-user.target

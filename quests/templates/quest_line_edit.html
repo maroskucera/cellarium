@@ -1,0 +1,61 @@
+<!--
+Cellarium Quests — edit quest line form
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "quest_line_edit"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quests — Edit Quest Line</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+    {{template "_nav" .Nav}}
+    <h1>Edit Quest Line</h1>
+    <form method="post" action="{{.Action}}">
+        <fieldset>
+            <legend>Quest Line</legend>
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required autofocus
+                value="{{if .Line}}{{.Line.Name}}{{end}}"
+                {{if .Errors}}{{if index .Errors "name"}}aria-describedby="name-err"{{end}}{{end}}>
+            {{if .Errors}}{{if index .Errors "name"}}
+            <p id="name-err" style="color:var(--text);font-size:0.875rem">{{index .Errors "name"}}</p>
+            {{end}}{{end}}
+
+            <label for="description">Description</label>
+            <textarea id="description" name="description">{{if .Line}}{{if .Line.Description.Valid}}{{.Line.Description.String}}{{end}}{{end}}</textarea>
+
+            <label for="sort_order">Sort Order</label>
+            <input type="number" id="sort_order" name="sort_order" min="0"
+                value="{{if .Line}}{{.Line.SortOrder}}{{else}}0{{end}}">
+        </fieldset>
+        <button type="submit">Save Changes</button>
+        <p style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem">
+            <a href="/quest-lines" class="btn btn-secondary">Cancel</a>
+            {{if .Line}}
+            <form method="post" action="/quest-lines/{{.Line.ID}}/delete" style="display:inline">
+                <button type="submit" class="btn-danger-sm" onclick="return confirm('Delete this quest line?')">Delete</button>
+            </form>
+            {{end}}
+        </p>
+    </form>
+</main>
+</body>
+</html>
+{{end}}

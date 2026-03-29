@@ -39,7 +39,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <ul class="quest-list" aria-label="Main quests">
         {{range .MainQuests}}
             <li class="quest-card" data-quest-id="{{.ID}}">
-                <span class="drag-handle" aria-hidden="true">⠿</span>
+                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
                 <div class="quest-card-body">
                     <p class="quest-title">{{.Title}}</p>
                     {{if or .QuestDate .QuestGiver}}
@@ -51,12 +51,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                     {{end}}
                     {{if .Description}}<p class="quest-meta">{{.Description}}</p>{{end}}
                     <div class="quest-actions">
-                        <form method="post" action="/quests/{{.ID}}/complete" class="inline-form">
-                            <button type="submit" class="btn">Complete</button>
-                        </form>
-                        <form method="post" action="/quests/{{.ID}}/fail" class="inline-form">
-                            <button type="submit" class="btn-danger-sm">Fail</button>
-                        </form>
                         <a href="/quests/{{.ID}}/edit" class="btn btn-secondary">Edit</a>
                     </div>
                 </div>
@@ -72,7 +66,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <ul class="quest-list" aria-label="Side quests">
         {{range .SideQuests}}
             <li class="quest-card" data-quest-id="{{.ID}}">
-                <span class="drag-handle" aria-hidden="true">⠿</span>
+                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
                 <div class="quest-card-body">
                     <p class="quest-title">{{.Title}}</p>
                     {{if or .QuestDate .QuestGiver}}
@@ -84,12 +78,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                     {{end}}
                     {{if .Description}}<p class="quest-meta">{{.Description}}</p>{{end}}
                     <div class="quest-actions">
-                        <form method="post" action="/quests/{{.ID}}/complete" class="inline-form">
-                            <button type="submit" class="btn">Complete</button>
-                        </form>
-                        <form method="post" action="/quests/{{.ID}}/fail" class="inline-form">
-                            <button type="submit" class="btn-danger-sm">Fail</button>
-                        </form>
                         <a href="/quests/{{.ID}}/edit" class="btn btn-secondary">Edit</a>
                     </div>
                 </div>
@@ -105,7 +93,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <ul class="quest-list" aria-label="Daily quests">
         {{range .DailyQuests}}
             <li class="quest-card" data-quest-id="{{.ID}}">
-                <span class="drag-handle" aria-hidden="true">⠿</span>
+                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
                 <div class="quest-card-body">
                     <p class="quest-title">{{.Title}}</p>
                     {{if or .QuestDate .QuestGiver}}
@@ -117,12 +105,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                     {{end}}
                     {{if .Description}}<p class="quest-meta">{{.Description}}</p>{{end}}
                     <div class="quest-actions">
-                        <form method="post" action="/quests/{{.ID}}/complete" class="inline-form">
-                            <button type="submit" class="btn">Complete</button>
-                        </form>
-                        <form method="post" action="/quests/{{.ID}}/fail" class="inline-form">
-                            <button type="submit" class="btn-danger-sm">Fail</button>
-                        </form>
                         <a href="/quests/{{.ID}}/edit" class="btn btn-secondary">Edit</a>
                     </div>
                 </div>
@@ -139,6 +121,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     </div>
     {{end}}
 </main>
+<script src="/static/completion.js"></script>
 <script src="/static/reorder.js"></script>
 <script src="/static/push.js"></script>
 </body>

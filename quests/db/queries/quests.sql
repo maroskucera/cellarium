@@ -62,3 +62,13 @@ FROM quests.quests WHERE status = 'active' AND reminder_time IS NOT NULL AND rem
 
 -- name: MarkReminderSent :exec
 UPDATE quests.quests SET reminder_sent_at = @today WHERE id = @id;
+
+-- name: UncompleteQuest :exec
+UPDATE quests.quests SET status = 'active', completed_at = NULL WHERE id = @id;
+
+-- name: UncompleteQuestAndResetDate :exec
+UPDATE quests.quests SET status = 'active', completed_at = NULL, quest_date = @quest_date WHERE id = @id;
+
+-- name: ListActiveAndCompletedQuests :many
+SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
+FROM quests.quests WHERE status IN ('active', 'completed') ORDER BY sort_order ASC, id ASC;

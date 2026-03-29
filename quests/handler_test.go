@@ -49,15 +49,19 @@ type stubQuerier struct {
 	createdID  int64
 	err        error
 
-	failOverdueQuestsCall  *time.Time
-	createQuestCalled      bool
-	lastCreateQuestParams  sqlc.CreateQuestParams
-	completeCalled         bool
-	failCalled             bool
-	sortOrderUpdate        *sqlc.UpdateQuestSortOrderParams
-	listDueRemindersCalled bool
-	markReminderSentCalled bool
-	dueReminders           []sqlc.QuestsQuest
+	failOverdueQuestsCall        *time.Time
+	createQuestCalled            bool
+	lastCreateQuestParams        sqlc.CreateQuestParams
+	completeCalled               bool
+	failCalled                   bool
+	uncompleteCalled             bool
+	uncompleteResetDateCalled    bool
+	lastUncompleteResetDateParam sqlc.UncompleteQuestAndResetDateParams
+	listActiveAndCompletedCalled bool
+	sortOrderUpdate              *sqlc.UpdateQuestSortOrderParams
+	listDueRemindersCalled       bool
+	markReminderSentCalled       bool
+	dueReminders                 []sqlc.QuestsQuest
 }
 
 func (s *stubQuerier) CompleteQuest(_ context.Context, _ int64) error {
@@ -110,8 +114,24 @@ func (s *stubQuerier) GetQuestLine(_ context.Context, _ int64) (sqlc.QuestsQuest
 	return s.questLine, s.err
 }
 
+func (s *stubQuerier) ListActiveAndCompletedQuests(_ context.Context) ([]sqlc.QuestsQuest, error) {
+	s.listActiveAndCompletedCalled = true
+	return s.quests, s.err
+}
+
 func (s *stubQuerier) ListActiveQuests(_ context.Context) ([]sqlc.QuestsQuest, error) {
 	return s.quests, s.err
+}
+
+func (s *stubQuerier) UncompleteQuest(_ context.Context, _ int64) error {
+	s.uncompleteCalled = true
+	return s.err
+}
+
+func (s *stubQuerier) UncompleteQuestAndResetDate(_ context.Context, arg sqlc.UncompleteQuestAndResetDateParams) error {
+	s.uncompleteResetDateCalled = true
+	s.lastUncompleteResetDateParam = arg
+	return s.err
 }
 
 func (s *stubQuerier) ListDueReminders(_ context.Context, _ sqlc.ListDueRemindersParams) ([]sqlc.QuestsQuest, error) {
@@ -281,28 +301,96 @@ func TestHandleCompleteQuest(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 
-	if w.Code != http.StatusSeeOther {
-		t.Errorf("expected 303, got %d", w.Code)
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected 204, got %d", w.Code)
 	}
 	if !stub.completeCalled {
 		t.Error("expected CompleteQuest to be called")
 	}
 }
 
-func TestHandleFailQuest(t *testing.T) {
-	stub := &stubQuerier{}
-	h := handleFailQuest(stub)
+func TestHandleUncompleteQuest_noDate(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{ID: 1, Title: "Test", QuestType: "side", Status: "completed"},
+	}
+	h := handleUncompleteQuest(stub)
 
-	req := httptest.NewRequest("POST", "/quests/1/fail", nil)
+	req := httptest.NewRequest("POST", "/quests/1/uncomplete", nil)
 	req.SetPathValue("id", "1")
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 
-	if w.Code != http.StatusSeeOther {
-		t.Errorf("expected 303, got %d", w.Code)
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected 204, got %d", w.Code)
 	}
-	if !stub.failCalled {
-		t.Error("expected FailQuest to be called")
+	if !stub.uncompleteCalled {
+		t.Error("expected UncompleteQuest to be called")
+	}
+	if stub.uncompleteResetDateCalled {
+		t.Error("expected UncompleteQuestAndResetDate NOT to be called")
+	}
+}
+
+func TestHandleUncompleteQuest_futureDate(t *testing.T) {
+	// quest_date >= today: use UncompleteQuest (no date reset)
+	futureDate := pgtype.Date{Time: time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC), Valid: true}
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{ID: 2, Title: "Future", QuestType: "main", Status: "completed", QuestDate: futureDate},
+	}
+	h := handleUncompleteQuest(stub)
+
+	req := httptest.NewRequest("POST", "/quests/2/uncomplete", nil)
+	req.SetPathValue("id", "2")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected 204, got %d", w.Code)
+	}
+	if !stub.uncompleteCalled {
+		t.Error("expected UncompleteQuest to be called")
+	}
+}
+
+func TestHandleUncompleteQuest_pastDate(t *testing.T) {
+	// quest_date < today: use UncompleteQuestAndResetDate with today
+	pastDate := pgtype.Date{Time: time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC), Valid: true}
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{ID: 3, Title: "Past", QuestType: "daily", Status: "completed", QuestDate: pastDate},
+	}
+	h := handleUncompleteQuest(stub)
+
+	req := httptest.NewRequest("POST", "/quests/3/uncomplete", nil)
+	req.SetPathValue("id", "3")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected 204, got %d", w.Code)
+	}
+	if stub.uncompleteCalled {
+		t.Error("expected UncompleteQuest NOT to be called")
+	}
+	if !stub.uncompleteResetDateCalled {
+		t.Error("expected UncompleteQuestAndResetDate to be called")
+	}
+	expectedDate := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)
+	if stub.lastUncompleteResetDateParam.QuestDate.Time != expectedDate {
+		t.Errorf("expected date %v, got %v", expectedDate, stub.lastUncompleteResetDateParam.QuestDate.Time)
+	}
+}
+
+func TestHandleUncompleteQuest_invalidID(t *testing.T) {
+	stub := &stubQuerier{}
+	h := handleUncompleteQuest(stub)
+
+	req := httptest.NewRequest("POST", "/quests/abc/uncomplete", nil)
+	req.SetPathValue("id", "abc")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
 	}
 }
 
@@ -327,6 +415,9 @@ func TestHandleAllQuests(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "all-quests") {
 		t.Errorf("expected all-quests in body, got: %s", w.Body.String())
+	}
+	if !stub.listActiveAndCompletedCalled {
+		t.Error("expected ListActiveAndCompletedQuests to be called")
 	}
 }
 

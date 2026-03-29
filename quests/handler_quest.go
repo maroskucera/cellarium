@@ -311,22 +311,37 @@ func handleCompleteQuest(q sqlc.Querier) http.Handler {
 			// log but don't fail — quest is already completed
 			_ = err
 		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		w.WriteHeader(http.StatusNoContent)
 	})
 }
 
-func handleFailQuest(q sqlc.Querier) http.Handler {
+func handleUncompleteQuest(q sqlc.Querier) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 		if err != nil {
 			http.Error(w, "invalid quest id", http.StatusBadRequest)
 			return
 		}
-		if err := q.FailQuest(r.Context(), id); err != nil {
+		ctx := r.Context()
+		quest, err := q.GetQuest(ctx, id)
+		if err != nil {
+			http.Error(w, "quest not found", http.StatusNotFound)
+			return
+		}
+		today := timeNow().Truncate(24 * time.Hour)
+		if quest.QuestDate.Valid && quest.QuestDate.Time.Before(today) {
+			err = q.UncompleteQuestAndResetDate(ctx, sqlc.UncompleteQuestAndResetDateParams{
+				ID:        id,
+				QuestDate: pgtype.Date{Time: today, Valid: true},
+			})
+		} else {
+			err = q.UncompleteQuest(ctx, id)
+		}
+		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		w.WriteHeader(http.StatusNoContent)
 	})
 }
 

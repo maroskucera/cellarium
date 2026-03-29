@@ -27,7 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 <main>
     {{template "_nav" .Nav}}
     <header>
-        <h1>All Active Quests</h1>
+        <h1>All Quests</h1>
         <p><a href="/quests/new" class="btn btn-secondary">+ New Quest</a></p>
     </header>
 
@@ -36,8 +36,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <h2 class="quest-line-name">{{.Name}}</h2>
         <ul class="quest-list" aria-label="{{.Name}}">
         {{range .Quests}}
-            <li class="quest-card" data-quest-id="{{.ID}}">
-                <span class="drag-handle" aria-hidden="true">⠿</span>
+            <li class="quest-card{{if eq .Status "completed"}} status-completed{{end}}" data-quest-id="{{.ID}}">
+                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}"
+                    {{if eq .Status "completed"}}checked{{end}} aria-label="Complete {{.Title}}">
                 <div class="quest-card-body">
                     <p class="quest-title">{{.Title}}</p>
                     <p class="quest-meta">
@@ -61,8 +62,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <h2 class="quest-line-name">Ungrouped</h2>
         <ul class="quest-list" aria-label="Ungrouped quests">
         {{range .Ungrouped}}
-            <li class="quest-card" data-quest-id="{{.ID}}">
-                <span class="drag-handle" aria-hidden="true">⠿</span>
+            <li class="quest-card{{if eq .Status "completed"}} status-completed{{end}}" data-quest-id="{{.ID}}">
+                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}"
+                    {{if eq .Status "completed"}}checked{{end}} aria-label="Complete {{.Title}}">
                 <div class="quest-card-body">
                     <p class="quest-title">{{.Title}}</p>
                     <p class="quest-meta">
@@ -88,6 +90,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     </div>
     {{end}}
 </main>
+<script src="/static/completion.js"></script>
 <script src="/static/reorder.js"></script>
 </body>
 </html>

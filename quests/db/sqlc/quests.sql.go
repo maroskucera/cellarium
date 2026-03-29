@@ -132,6 +132,49 @@ func (q *Queries) GetQuest(ctx context.Context, id int64) (QuestsQuest, error) {
 	return i, err
 }
 
+const listActiveAndCompletedQuests = `-- name: ListActiveAndCompletedQuests :many
+SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
+FROM quests.quests WHERE status IN ('active', 'completed') ORDER BY sort_order ASC, id ASC
+`
+
+func (q *Queries) ListActiveAndCompletedQuests(ctx context.Context) ([]QuestsQuest, error) {
+	rows, err := q.db.Query(ctx, listActiveAndCompletedQuests)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuestsQuest
+	for rows.Next() {
+		var i QuestsQuest
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.QuestType,
+			&i.QuestDate,
+			&i.QuestLineID,
+			&i.QuestGiver,
+			&i.ReminderTime,
+			&i.ReminderSentAt,
+			&i.SortOrder,
+			&i.Status,
+			&i.CompletedAt,
+			&i.FailedAt,
+			&i.RecurrenceType,
+			&i.RecurrenceN,
+			&i.RecurrenceUnit,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveQuests = `-- name: ListActiveQuests :many
 SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
 FROM quests.quests WHERE status = 'active' ORDER BY sort_order ASC, id ASC
@@ -344,6 +387,29 @@ type MarkReminderSentParams struct {
 
 func (q *Queries) MarkReminderSent(ctx context.Context, arg MarkReminderSentParams) error {
 	_, err := q.db.Exec(ctx, markReminderSent, arg.Today, arg.ID)
+	return err
+}
+
+const uncompleteQuest = `-- name: UncompleteQuest :exec
+UPDATE quests.quests SET status = 'active', completed_at = NULL WHERE id = $1
+`
+
+func (q *Queries) UncompleteQuest(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, uncompleteQuest, id)
+	return err
+}
+
+const uncompleteQuestAndResetDate = `-- name: UncompleteQuestAndResetDate :exec
+UPDATE quests.quests SET status = 'active', completed_at = NULL, quest_date = $1 WHERE id = $2
+`
+
+type UncompleteQuestAndResetDateParams struct {
+	QuestDate pgtype.Date `json:"quest_date"`
+	ID        int64       `json:"id"`
+}
+
+func (q *Queries) UncompleteQuestAndResetDate(ctx context.Context, arg UncompleteQuestAndResetDateParams) error {
+	_, err := q.db.Exec(ctx, uncompleteQuestAndResetDate, arg.QuestDate, arg.ID)
 	return err
 }
 

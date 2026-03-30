@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/maroskucera/cellarium/quests/db/sqlc"
@@ -51,6 +52,7 @@ func handlePushSubscribe(q sqlc.Querier) http.Handler {
 			P256dh:   req.Keys.P256dh,
 			Auth:     req.Keys.Auth,
 		}); err != nil {
+			log.Printf("handlePushSubscribe: failed to store subscription for %s: %v", req.Endpoint, err)
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}

@@ -31,14 +31,21 @@
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: await getKey()});
         const j = sub.toJSON();
-        await fetch('/api/push/subscribe', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({endpoint: j.endpoint, keys: j.keys})});
+        const resp = await fetch('/api/push/subscribe', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({endpoint: j.endpoint, keys: j.keys})});
+        if (!resp.ok) {
+            await sub.unsubscribe();
+            throw new Error('Server failed to save subscription: ' + resp.status);
+        }
         btn.textContent = 'Disable Notifications'; btn.dataset.active = '1';
     }
     async function unsubscribe() {
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
         if (sub) {
-            await fetch('/api/push/unsubscribe', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({endpoint: sub.endpoint})});
+            const resp = await fetch('/api/push/unsubscribe', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({endpoint: sub.endpoint})});
+            if (!resp.ok) {
+                throw new Error('Server failed to remove subscription: ' + resp.status);
+            }
             await sub.unsubscribe();
         }
         btn.textContent = 'Enable Notifications'; btn.dataset.active = '0';
@@ -49,6 +56,11 @@
         if (sub) { btn.textContent = 'Disable Notifications'; btn.dataset.active = '1'; }
     });
     btn.addEventListener('click', async () => {
-        if (btn.dataset.active === '1') { await unsubscribe(); } else { await subscribe(); }
+        try {
+            if (btn.dataset.active === '1') { await unsubscribe(); } else { await subscribe(); }
+        } catch (err) {
+            console.error('Push notification error:', err);
+            alert('Failed to update notification settings: ' + err.message);
+        }
     });
 }());

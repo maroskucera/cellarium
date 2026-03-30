@@ -50,22 +50,23 @@ type stubQuerier struct {
 	createdID  int64
 	err        error
 
-	failOverdueQuestsCall           *time.Time
-	createQuestCalled               bool
-	lastCreateQuestParams           sqlc.CreateQuestParams
-	completeCalled                  bool
-	failCalled                      bool
-	uncompleteCalled                bool
-	uncompleteResetDateCalled       bool
-	lastUncompleteResetDateParam    sqlc.UncompleteQuestAndResetDateParams
-	listActiveCalled                bool
-	sortOrderUpdate                 *sqlc.UpdateQuestSortOrderParams
-	listDueRemindersCalled          bool
-	markReminderSentCalled          bool
-	dueReminders                    []sqlc.QuestsQuest
-	lastCreateQuestLineParams       sqlc.CreateQuestLineParams
-	updateQuestTypeByLineCalled     bool
-	lastUpdateQuestTypeByLineParams sqlc.UpdateQuestTypeByLineParams
+	failOverdueQuestsCall            *time.Time
+	createQuestCalled                bool
+	lastCreateQuestParams            sqlc.CreateQuestParams
+	completeCalled                   bool
+	failCalled                       bool
+	uncompleteCalled                 bool
+	uncompleteResetDateCalled        bool
+	lastUncompleteResetDateParam     sqlc.UncompleteQuestAndResetDateParams
+	listActiveCalled                 bool
+	sortOrderUpdate                  *sqlc.UpdateQuestSortOrderParams
+	listDueRemindersCalled           bool
+	markReminderSentCalled           bool
+	dueReminders                     []sqlc.QuestsQuest
+	lastCreateQuestLineParams        sqlc.CreateQuestLineParams
+	updateQuestTypeByLineCalled      bool
+	lastUpdateQuestTypeByLineParams  sqlc.UpdateQuestTypeByLineParams
+	lastCreatePushSubscriptionParams sqlc.CreatePushSubscriptionParams
 }
 
 func (s *stubQuerier) CompleteQuest(_ context.Context, _ int64) error {
@@ -73,7 +74,8 @@ func (s *stubQuerier) CompleteQuest(_ context.Context, _ int64) error {
 	return s.err
 }
 
-func (s *stubQuerier) CreatePushSubscription(_ context.Context, _ sqlc.CreatePushSubscriptionParams) (int64, error) {
+func (s *stubQuerier) CreatePushSubscription(_ context.Context, arg sqlc.CreatePushSubscriptionParams) (int64, error) {
+	s.lastCreatePushSubscriptionParams = arg
 	return s.createdID, s.err
 }
 

@@ -26,6 +26,8 @@ Hierarchy (highest priority first):
 
 Uses `joho/godotenv` which does not override already-set vars, so files are loaded in priority order (highest first).
 
+Committed `.env` files document all available configuration options and their defaults. Always add new options there even when the code has a hardcoded fallback.
+
 ## sqlc
 
 Generated code is committed to git. Run `sqlc generate` from the app directory after changing queries or migrations.

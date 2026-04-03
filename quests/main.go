@@ -150,6 +150,7 @@ func main() {
 	}
 
 	loadEnvFromCwd()
+	initLocation()
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {

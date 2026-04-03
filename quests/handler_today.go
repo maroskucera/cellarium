@@ -19,9 +19,7 @@ package main
 import (
 	"html/template"
 	"net/http"
-	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/maroskucera/cellarium/quests/db/sqlc"
 )
 
@@ -76,7 +74,7 @@ func handleToday(q sqlc.Querier, tmpl *template.Template) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		now := timeNow()
-		today := pgtype.Date{Time: now.Truncate(24 * time.Hour), Valid: true}
+		today := localToday(now)
 
 		if err := ensureFailedQuests(ctx, q, today); err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
@@ -102,8 +100,8 @@ func handleToday(q sqlc.Querier, tmpl *template.Template) http.Handler {
 
 		data := todayData{
 			Nav:     "today",
-			Date:    now.Format("Monday, 2 January 2006"),
-			DateISO: now.Format("2006-01-02"),
+			Date:    now.In(appLocation).Format("Monday, 2 January 2006"),
+			DateISO: now.In(appLocation).Format("2006-01-02"),
 		}
 
 		for _, quest := range quests {

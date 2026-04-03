@@ -33,6 +33,7 @@ import (
 
 func init() {
 	timeNow = fixedTime
+	appLocation = time.UTC
 }
 
 func fixedTime() time.Time {
@@ -200,10 +201,10 @@ var testTemplatesFS embed.FS
 // minimal template set for tests
 const testTemplates = `
 {{define "today"}}<html><body>today {{.Date}} main={{len .MainQuests}} side={{len .SideQuests}} daily={{len .DailyQuests}}{{range .MainQuests}}<a href="/quests/{{.ID}}/edit" class="quest-card-link">{{.Title}}{{if .HasDescription}} 📝{{end}}</a>{{end}}</body></html>{{end}}
-{{define "quest_new"}}<html><body>quest-new</body></html>{{end}}
+{{define "quest_new"}}<html><body>quest-new title={{.Quest.Title}}</body></html>{{end}}
 {{define "quest_edit"}}<html><body>quest-edit id={{.Quest.ID}}<div class="btn-row"><button type="submit">Save Changes</button><a href="/" class="btn btn-secondary">Cancel</a><form method="post" action="/quests/{{.Quest.ID}}/delete"><button type="submit" class="btn-danger-sm">Delete</button></form></div></body></html>{{end}}
 {{define "all_quests"}}<html><body>all-quests types={{len .Types}}</body></html>{{end}}
-{{define "quest_log"}}<html><body>quest-log days={{len .Days}}</body></html>{{end}}
+{{define "quest_log"}}<html><body>quest-log days={{len .Days}}{{range .Days}}{{range .Quests}}{{if eq .Status "failed"}}<a href="/quests/new?retry_from={{.ID}}">{{.Title}}</a>{{else}}<a href="/quests/{{.ID}}/edit">{{.Title}}</a>{{end}}{{end}}{{end}}</body></html>{{end}}
 {{define "quest_lines"}}<html><body>quest-lines count={{len .QuestLines}}</body></html>{{end}}
 {{define "quest_line_new"}}<html><body>quest-line-new</body></html>{{end}}
 {{define "quest_line_edit"}}<html><body>quest-line-edit</body></html>{{end}}
@@ -785,5 +786,158 @@ func TestHandleToday_noDescriptionIcon(t *testing.T) {
 	// 📝 icon should NOT be in output
 	if strings.Contains(body, "📝") {
 		t.Errorf("expected no memo icon 📝 in output, got: %s", body)
+	}
+}
+
+func TestHandleNewQuest_retryFromFailed(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:          1,
+			Title:       "Failed Quest",
+			QuestType:   "main",
+			Status:      "failed",
+			Description: pgtype.Text{String: "desc", Valid: true},
+			QuestGiver:  pgtype.Text{String: "The King", Valid: true},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleNewQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/new?retry_from=1", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "Failed Quest") {
+		t.Errorf("expected 'Failed Quest' title pre-filled in body, got: %s", body)
+	}
+}
+
+func TestHandleNewQuest_retryFromNonFailed(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:        2,
+			Title:     "Active Quest",
+			QuestType: "side",
+			Status:    "active",
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleNewQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/new?retry_from=2", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if strings.Contains(body, "Active Quest") {
+		t.Errorf("expected 'Active Quest' NOT in body for non-failed quest, got: %s", body)
+	}
+}
+
+func TestHandleNewQuest_retryFromInvalidID(t *testing.T) {
+	stub := &stubQuerier{}
+	tmpl := mustParseTestTemplates(t)
+	h := handleNewQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/new?retry_from=abc", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "quest-new") {
+		t.Errorf("expected 'quest-new' in body, got: %s", body)
+	}
+}
+
+func TestHandleEditQuest_failedRedirects(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:        1,
+			Title:     "Failed",
+			QuestType: "main",
+			Status:    "failed",
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleEditQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/1/edit", nil)
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	loc := w.Header().Get("Location")
+	if loc != "/quests/new?retry_from=1" {
+		t.Errorf("expected Location '/quests/new?retry_from=1', got %q", loc)
+	}
+}
+
+func TestHandleEditQuest_failedPostRedirects(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:        1,
+			Title:     "Failed",
+			QuestType: "main",
+			Status:    "failed",
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleEditQuest(stub, tmpl)
+
+	req := httptest.NewRequest("POST", "/quests/1/edit", nil)
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	loc := w.Header().Get("Location")
+	if loc != "/quests/new?retry_from=1" {
+		t.Errorf("expected Location '/quests/new?retry_from=1', got %q", loc)
+	}
+}
+
+func TestHandleQuestLog_failedQuestRetryLink(t *testing.T) {
+	stub := &stubQuerier{
+		quests: []sqlc.QuestsQuest{
+			{
+				ID:        5,
+				Title:     "Failed Quest",
+				QuestType: "main",
+				Status:    "failed",
+				FailedAt:  pgtype.Timestamptz{Time: time.Date(2026, 3, 14, 9, 0, 0, 0, time.UTC), Valid: true},
+			},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleQuestLog(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/log", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "/quests/new?retry_from=5") {
+		t.Errorf("expected retry link '/quests/new?retry_from=5' in body, got: %s", body)
+	}
+	if strings.Contains(body, "/quests/5/edit") {
+		t.Errorf("expected no edit link '/quests/5/edit' for failed quest, got: %s", body)
 	}
 }

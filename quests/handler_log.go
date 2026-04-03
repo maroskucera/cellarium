@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/maroskucera/cellarium/quests/db/sqlc"
 )
 
@@ -49,7 +48,7 @@ func handleQuestLog(q sqlc.Querier, tmpl *template.Template) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		now := timeNow()
-		today := pgtype.Date{Time: now.Truncate(24 * time.Hour), Valid: true}
+		today := localToday(now)
 
 		if err := ensureFailedQuests(ctx, q, today); err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
@@ -75,8 +74,8 @@ func handleQuestLog(q sqlc.Querier, tmpl *template.Template) http.Handler {
 				continue
 			}
 
-			dayKey := resolvedTime.Format("2006-01-02")
-			dayLabel := resolvedTime.Format("Monday, 2 January 2006")
+			dayKey := resolvedTime.In(appLocation).Format("2006-01-02")
+			dayLabel := resolvedTime.In(appLocation).Format("Monday, 2 January 2006")
 
 			d := logQuestDisplay{
 				ID:             quest.ID,

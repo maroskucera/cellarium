@@ -161,7 +161,49 @@ func handleNewQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			return
 		}
 
-		lines, err := loadQuestLines(q, r, 0)
+		var selectedLineID int64
+		fv := questFormValues{
+			QuestType:      "main",
+			RecurrenceType: "none",
+			RecurrenceN:    "1",
+			RecurrenceUnit: "days",
+		}
+
+		// Check for retry_from parameter to pre-fill form from a failed quest
+		if retryFromStr := r.URL.Query().Get("retry_from"); retryFromStr != "" {
+			if retryID, err := strconv.ParseInt(retryFromStr, 10, 64); err == nil {
+				if retryQuest, err := q.GetQuest(r.Context(), retryID); err == nil && retryQuest.Status == "failed" {
+					fv.Title = retryQuest.Title
+					fv.QuestType = retryQuest.QuestType
+					if retryQuest.Description.Valid {
+						fv.Description = retryQuest.Description.String
+					}
+					if retryQuest.QuestLineID.Valid {
+						fv.QuestLineID = retryQuest.QuestLineID.Int64
+						selectedLineID = retryQuest.QuestLineID.Int64
+					}
+					if retryQuest.QuestGiver.Valid {
+						fv.QuestGiver = retryQuest.QuestGiver.String
+					}
+					if retryQuest.ReminderTime.Valid {
+						h := retryQuest.ReminderTime.Microseconds / 3600_000_000
+						m := (retryQuest.ReminderTime.Microseconds % 3600_000_000) / 60_000_000
+						fv.ReminderTime = time.Date(0, 1, 1, int(h), int(m), 0, 0, time.UTC).Format("15:04")
+					}
+					if retryQuest.RecurrenceType.Valid && retryQuest.RecurrenceType.String != "" {
+						fv.RecurrenceType = retryQuest.RecurrenceType.String
+					}
+					if retryQuest.RecurrenceN.Valid {
+						fv.RecurrenceN = strconv.Itoa(int(retryQuest.RecurrenceN.Int32))
+					}
+					if retryQuest.RecurrenceUnit.Valid {
+						fv.RecurrenceUnit = retryQuest.RecurrenceUnit.String
+					}
+				}
+			}
+		}
+
+		lines, err := loadQuestLines(q, r, selectedLineID)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
@@ -171,12 +213,7 @@ func handleNewQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			Title:      "New Quest",
 			Action:     "/quests/new",
 			QuestLines: lines,
-			Quest: questFormValues{
-				QuestType:      "main",
-				RecurrenceType: "none",
-				RecurrenceN:    "1",
-				RecurrenceUnit: "days",
-			},
+			Quest:      fv,
 		}
 		w.Header().Set("Cache-Control", "no-store")
 		renderTemplate(w, tmpl, "quest_new", data)
@@ -196,6 +233,11 @@ func handleEditQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 		quest, err := q.GetQuest(ctx, id)
 		if err != nil {
 			http.Error(w, "quest not found", http.StatusNotFound)
+			return
+		}
+
+		if quest.Status == "failed" {
+			http.Redirect(w, r, "/quests/new?retry_from="+idStr, http.StatusSeeOther)
 			return
 		}
 
@@ -346,7 +388,7 @@ func handleUncompleteQuest(q sqlc.Querier) http.Handler {
 			http.Error(w, "quest not found", http.StatusNotFound)
 			return
 		}
-		today := timeNow().Truncate(24 * time.Hour)
+		today := localToday(timeNow()).Time
 		if quest.QuestDate.Valid && quest.QuestDate.Time.Before(today) {
 			err = q.UncompleteQuestAndResetDate(ctx, sqlc.UncompleteQuestAndResetDateParams{
 				ID:        id,

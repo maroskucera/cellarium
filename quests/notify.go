@@ -23,7 +23,6 @@ import (
 	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/maroskucera/cellarium/quests/db/sqlc"
 )
 
@@ -49,17 +48,14 @@ func startTicker(ctx context.Context, q sqlc.Querier, cfg notifyConfig) {
 }
 
 func runTickerTasks(ctx context.Context, q sqlc.Querier, cfg notifyConfig, now time.Time) {
-	today := pgtype.Date{Time: now.Truncate(24 * time.Hour), Valid: true}
+	today := localToday(now)
 	if err := ensureFailedQuests(ctx, q, today); err != nil {
 		log.Printf("ensureFailedQuests error: %v", err)
 	}
 	if cfg.VAPIDPrivateKey == "" {
 		return
 	}
-	nowTime := pgtype.Time{
-		Microseconds: int64(now.Hour())*3600_000_000 + int64(now.Minute())*60_000_000,
-		Valid:        true,
-	}
+	nowTime := localTime(now)
 	dueQuests, err := q.ListDueReminders(ctx, sqlc.ListDueRemindersParams{
 		NowTime: nowTime,
 		Today:   today,

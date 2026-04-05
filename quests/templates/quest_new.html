@@ -47,7 +47,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             </div>
 
             <label for="quest_date">Due Date</label>
-            <input type="date" id="quest_date" name="quest_date" value="{{.Quest.QuestDate}}">
+            <div class="input-with-clear">
+                <input type="date" id="quest_date" name="quest_date" value="{{.Quest.QuestDate}}">
+                <button type="button" class="btn-clear" onclick="this.closest('.input-with-clear').querySelector('input').value=''" aria-label="Clear date">&times;</button>
+            </div>
 
             <label for="quest_line_id">Quest Line</label>
             <select id="quest_line_id" name="quest_line_id">
@@ -62,7 +65,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             <datalist id="quest-givers-list"></datalist>
 
             <label for="reminder_time">Reminder Time</label>
-            <input type="time" id="reminder_time" name="reminder_time" value="{{.Quest.ReminderTime}}">
+            <div class="input-with-clear">
+                <input type="time" id="reminder_time" name="reminder_time" value="{{.Quest.ReminderTime}}">
+                <button type="button" class="btn-clear" onclick="this.closest('.input-with-clear').querySelector('input').value=''" aria-label="Clear time">&times;</button>
+            </div>
         </fieldset>
 
         <fieldset>

@@ -72,6 +72,8 @@ type stubQuerier struct {
 	updateQuestTypeByLineCalled      bool
 	lastUpdateQuestTypeByLineParams  sqlc.UpdateQuestTypeByLineParams
 	lastCreatePushSubscriptionParams sqlc.CreatePushSubscriptionParams
+	updateQuestCalled                bool
+	lastUpdateQuestParams            sqlc.UpdateQuestParams
 }
 
 func (s *stubQuerier) CompleteQuest(_ context.Context, _ int64) error {
@@ -181,7 +183,9 @@ func (s *stubQuerier) MarkReminderSent(_ context.Context, _ sqlc.MarkReminderSen
 	return s.err
 }
 
-func (s *stubQuerier) UpdateQuest(_ context.Context, _ sqlc.UpdateQuestParams) error {
+func (s *stubQuerier) UpdateQuest(_ context.Context, arg sqlc.UpdateQuestParams) error {
+	s.updateQuestCalled = true
+	s.lastUpdateQuestParams = arg
 	return s.err
 }
 
@@ -1010,6 +1014,114 @@ func TestHandleEditQuest_failedPostRedirects(t *testing.T) {
 	loc := w.Header().Get("Location")
 	if loc != "/quests/1/retry" {
 		t.Errorf("expected Location '/quests/1/retry', got %q", loc)
+	}
+}
+
+func TestHandleEditQuest_clearQuestDate(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:        1,
+			Title:     "Has Date",
+			QuestType: "main",
+			Status:    "active",
+			QuestDate: pgtype.Date{Time: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), Valid: true},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleEditQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("title", "Has Date")
+	form.Set("quest_type", "main")
+	form.Set("quest_date", "")
+
+	req := httptest.NewRequest("POST", "/quests/1/edit", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	if !stub.updateQuestCalled {
+		t.Fatal("expected UpdateQuest to be called")
+	}
+	if stub.lastUpdateQuestParams.QuestDate.Valid {
+		t.Error("expected QuestDate.Valid to be false when quest_date is empty")
+	}
+}
+
+func TestHandleEditQuest_clearReminderTime(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:           1,
+			Title:        "Has Reminder",
+			QuestType:    "main",
+			Status:       "active",
+			ReminderTime: pgtype.Time{Microseconds: 9 * 3600_000_000, Valid: true},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleEditQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("title", "Has Reminder")
+	form.Set("quest_type", "main")
+	form.Set("reminder_time", "")
+
+	req := httptest.NewRequest("POST", "/quests/1/edit", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	if !stub.updateQuestCalled {
+		t.Fatal("expected UpdateQuest to be called")
+	}
+	if stub.lastUpdateQuestParams.ReminderTime.Valid {
+		t.Error("expected ReminderTime.Valid to be false when reminder_time is empty")
+	}
+}
+
+func TestHandleEditQuest_clearBothDateAndTime(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:           1,
+			Title:        "Has Both",
+			QuestType:    "side",
+			Status:       "active",
+			QuestDate:    pgtype.Date{Time: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), Valid: true},
+			ReminderTime: pgtype.Time{Microseconds: 9 * 3600_000_000, Valid: true},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleEditQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("title", "Has Both")
+	form.Set("quest_type", "side")
+
+	req := httptest.NewRequest("POST", "/quests/1/edit", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	if !stub.updateQuestCalled {
+		t.Fatal("expected UpdateQuest to be called")
+	}
+	if stub.lastUpdateQuestParams.QuestDate.Valid {
+		t.Error("expected QuestDate.Valid to be false when quest_date is omitted")
+	}
+	if stub.lastUpdateQuestParams.ReminderTime.Valid {
+		t.Error("expected ReminderTime.Valid to be false when reminder_time is omitted")
 	}
 }
 

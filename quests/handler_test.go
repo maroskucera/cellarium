@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -204,7 +205,8 @@ const testTemplates = `
 {{define "quest_new"}}<html><body>quest-new title={{.Quest.Title}}</body></html>{{end}}
 {{define "quest_edit"}}<html><body>quest-edit id={{.Quest.ID}}<div class="btn-row"><button type="submit">Save Changes</button><a href="/" class="btn btn-secondary">Cancel</a><form method="post" action="/quests/{{.Quest.ID}}/delete"><button type="submit" class="btn-danger-sm">Delete</button></form></div></body></html>{{end}}
 {{define "all_quests"}}<html><body>all-quests types={{len .Types}}</body></html>{{end}}
-{{define "quest_log"}}<html><body>quest-log days={{len .Days}}{{range .Days}}{{range .Quests}}{{if eq .Status "failed"}}<a href="/quests/new?retry_from={{.ID}}">{{.Title}}</a>{{else}}<a href="/quests/{{.ID}}/edit">{{.Title}}</a>{{end}}{{end}}{{end}}</body></html>{{end}}
+{{define "quest_log"}}<html><body>quest-log days={{len .Days}}{{range .Days}}{{range .Quests}}{{if eq .Status "failed"}}<a href="/quests/{{.ID}}/retry">{{.Title}}</a>{{else}}<a href="/quests/{{.ID}}/edit">{{.Title}}</a>{{end}}{{end}}{{end}}</body></html>{{end}}
+{{define "quest_retry"}}<html><body>quest-retry id={{.QuestID}} name={{.QuestName}} date={{.QuestDate}}</body></html>{{end}}
 {{define "quest_lines"}}<html><body>quest-lines count={{len .QuestLines}}</body></html>{{end}}
 {{define "quest_line_new"}}<html><body>quest-line-new</body></html>{{end}}
 {{define "quest_line_edit"}}<html><body>quest-line-edit</body></html>{{end}}
@@ -308,6 +310,27 @@ func TestHandleCreateQuest_post(t *testing.T) {
 	}
 	if stub.lastCreateQuestParams.Title != "My Quest" {
 		t.Errorf("expected title 'My Quest', got %q", stub.lastCreateQuestParams.Title)
+	}
+}
+
+func TestHandleCreateQuest_postInvalidDate(t *testing.T) {
+	stub := &stubQuerier{}
+	tmpl := mustParseTestTemplates(t)
+	h := handleNewQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("title", "My Quest")
+	form.Set("quest_date", "not-a-date")
+	req := httptest.NewRequest("POST", "/quests/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+	if stub.createQuestCalled {
+		t.Error("expected CreateQuest NOT to be called")
 	}
 }
 
@@ -789,76 +812,6 @@ func TestHandleToday_noDescriptionIcon(t *testing.T) {
 	}
 }
 
-func TestHandleNewQuest_retryFromFailed(t *testing.T) {
-	stub := &stubQuerier{
-		quest: sqlc.QuestsQuest{
-			ID:          1,
-			Title:       "Failed Quest",
-			QuestType:   "main",
-			Status:      "failed",
-			Description: pgtype.Text{String: "desc", Valid: true},
-			QuestGiver:  pgtype.Text{String: "The King", Valid: true},
-		},
-	}
-	tmpl := mustParseTestTemplates(t)
-	h := handleNewQuest(stub, tmpl)
-
-	req := httptest.NewRequest("GET", "/quests/new?retry_from=1", nil)
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected 200, got %d", w.Code)
-	}
-	body := w.Body.String()
-	if !strings.Contains(body, "Failed Quest") {
-		t.Errorf("expected 'Failed Quest' title pre-filled in body, got: %s", body)
-	}
-}
-
-func TestHandleNewQuest_retryFromNonFailed(t *testing.T) {
-	stub := &stubQuerier{
-		quest: sqlc.QuestsQuest{
-			ID:        2,
-			Title:     "Active Quest",
-			QuestType: "side",
-			Status:    "active",
-		},
-	}
-	tmpl := mustParseTestTemplates(t)
-	h := handleNewQuest(stub, tmpl)
-
-	req := httptest.NewRequest("GET", "/quests/new?retry_from=2", nil)
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected 200, got %d", w.Code)
-	}
-	body := w.Body.String()
-	if strings.Contains(body, "Active Quest") {
-		t.Errorf("expected 'Active Quest' NOT in body for non-failed quest, got: %s", body)
-	}
-}
-
-func TestHandleNewQuest_retryFromInvalidID(t *testing.T) {
-	stub := &stubQuerier{}
-	tmpl := mustParseTestTemplates(t)
-	h := handleNewQuest(stub, tmpl)
-
-	req := httptest.NewRequest("GET", "/quests/new?retry_from=abc", nil)
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("expected 200, got %d", w.Code)
-	}
-	body := w.Body.String()
-	if !strings.Contains(body, "quest-new") {
-		t.Errorf("expected 'quest-new' in body, got: %s", body)
-	}
-}
-
 func TestHandleEditQuest_failedRedirects(t *testing.T) {
 	stub := &stubQuerier{
 		quest: sqlc.QuestsQuest{
@@ -880,8 +833,8 @@ func TestHandleEditQuest_failedRedirects(t *testing.T) {
 		t.Errorf("expected 303, got %d", w.Code)
 	}
 	loc := w.Header().Get("Location")
-	if loc != "/quests/new?retry_from=1" {
-		t.Errorf("expected Location '/quests/new?retry_from=1', got %q", loc)
+	if loc != "/quests/1/retry" {
+		t.Errorf("expected Location '/quests/1/retry', got %q", loc)
 	}
 }
 
@@ -906,8 +859,8 @@ func TestHandleEditQuest_failedPostRedirects(t *testing.T) {
 		t.Errorf("expected 303, got %d", w.Code)
 	}
 	loc := w.Header().Get("Location")
-	if loc != "/quests/new?retry_from=1" {
-		t.Errorf("expected Location '/quests/new?retry_from=1', got %q", loc)
+	if loc != "/quests/1/retry" {
+		t.Errorf("expected Location '/quests/1/retry', got %q", loc)
 	}
 }
 
@@ -934,10 +887,217 @@ func TestHandleQuestLog_failedQuestRetryLink(t *testing.T) {
 		t.Errorf("expected 200, got %d", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, "/quests/new?retry_from=5") {
-		t.Errorf("expected retry link '/quests/new?retry_from=5' in body, got: %s", body)
+	if !strings.Contains(body, "/quests/5/retry") {
+		t.Errorf("expected retry link '/quests/5/retry' in body, got: %s", body)
 	}
 	if strings.Contains(body, "/quests/5/edit") {
 		t.Errorf("expected no edit link '/quests/5/edit' for failed quest, got: %s", body)
+	}
+}
+
+func TestHandleRetryQuest_get(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:          1,
+			Title:       "Failed Quest",
+			QuestType:   "main",
+			Status:      "failed",
+			Description: pgtype.Text{String: "desc", Valid: true},
+			QuestGiver:  pgtype.Text{String: "The King", Valid: true},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleRetryQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/1/retry", nil)
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "Failed Quest") {
+		t.Errorf("expected 'Failed Quest' in body, got: %s", body)
+	}
+	if !strings.Contains(body, "quest-retry") {
+		t.Errorf("expected 'quest-retry' in body, got: %s", body)
+	}
+}
+
+func TestHandleRetryQuest_getNonFailed(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:        2,
+			Title:     "Active Quest",
+			QuestType: "side",
+			Status:    "active",
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleRetryQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/2/retry", nil)
+	req.SetPathValue("id", "2")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	loc := w.Header().Get("Location")
+	if loc != "/quests/2/edit" {
+		t.Errorf("expected Location '/quests/2/edit', got %q", loc)
+	}
+}
+
+func TestHandleRetryQuest_getNotFound(t *testing.T) {
+	stub := &stubQuerier{
+		err: errors.New("not found"),
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleRetryQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/99/retry", nil)
+	req.SetPathValue("id", "99")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestHandleRetryQuest_post(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:             1,
+			Title:          "Failed Quest",
+			QuestType:      "side",
+			Status:         "failed",
+			Description:    pgtype.Text{String: "desc", Valid: true},
+			QuestGiver:     pgtype.Text{String: "The King", Valid: true},
+			QuestLineID:    pgtype.Int8{Int64: 3, Valid: true},
+			ReminderTime:   pgtype.Time{Microseconds: 36000000000, Valid: true},
+			RecurrenceType: pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:    pgtype.Int4{Int32: 7, Valid: true},
+			RecurrenceUnit: pgtype.Text{String: "days", Valid: true},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleRetryQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("quest_date", "2026-04-10")
+	req := httptest.NewRequest("POST", "/quests/1/retry", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	loc := w.Header().Get("Location")
+	if loc != "/" {
+		t.Errorf("expected Location '/', got %q", loc)
+	}
+	if !stub.createQuestCalled {
+		t.Error("expected CreateQuest to be called")
+	}
+	p := stub.lastCreateQuestParams
+	if p.Title != "Failed Quest" {
+		t.Errorf("expected title 'Failed Quest', got %q", p.Title)
+	}
+	if p.QuestType != "side" {
+		t.Errorf("expected quest_type 'side', got %q", p.QuestType)
+	}
+	if p.Description.String != "desc" || !p.Description.Valid {
+		t.Errorf("expected description 'desc' (valid), got %q (valid=%v)", p.Description.String, p.Description.Valid)
+	}
+	if p.QuestGiver.String != "The King" || !p.QuestGiver.Valid {
+		t.Errorf("expected quest_giver 'The King' (valid), got %q (valid=%v)", p.QuestGiver.String, p.QuestGiver.Valid)
+	}
+	if p.QuestLineID.Int64 != 3 || !p.QuestLineID.Valid {
+		t.Errorf("expected quest_line_id 3 (valid), got %d (valid=%v)", p.QuestLineID.Int64, p.QuestLineID.Valid)
+	}
+	expectedDate := time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC)
+	if !p.QuestDate.Valid || p.QuestDate.Time != expectedDate {
+		t.Errorf("expected quest_date 2026-04-10 (valid), got %v (valid=%v)", p.QuestDate.Time, p.QuestDate.Valid)
+	}
+	if p.ReminderTime.Microseconds != 36000000000 || !p.ReminderTime.Valid {
+		t.Errorf("expected reminder_time 36000000000 (valid), got %d (valid=%v)", p.ReminderTime.Microseconds, p.ReminderTime.Valid)
+	}
+	if p.RecurrenceType.String != "every" || !p.RecurrenceType.Valid {
+		t.Errorf("expected recurrence_type 'every' (valid), got %q (valid=%v)", p.RecurrenceType.String, p.RecurrenceType.Valid)
+	}
+	if p.RecurrenceN.Int32 != 7 || !p.RecurrenceN.Valid {
+		t.Errorf("expected recurrence_n 7 (valid), got %d (valid=%v)", p.RecurrenceN.Int32, p.RecurrenceN.Valid)
+	}
+	if p.RecurrenceUnit.String != "days" || !p.RecurrenceUnit.Valid {
+		t.Errorf("expected recurrence_unit 'days' (valid), got %q (valid=%v)", p.RecurrenceUnit.String, p.RecurrenceUnit.Valid)
+	}
+}
+
+func TestHandleRetryQuest_postNoDate(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:        1,
+			Title:     "No Date Quest",
+			QuestType: "main",
+			Status:    "failed",
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleRetryQuest(stub, tmpl)
+
+	form := url.Values{}
+	req := httptest.NewRequest("POST", "/quests/1/retry", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	loc := w.Header().Get("Location")
+	if loc != "/" {
+		t.Errorf("expected Location '/', got %q", loc)
+	}
+	if !stub.createQuestCalled {
+		t.Error("expected CreateQuest to be called")
+	}
+	if stub.lastCreateQuestParams.QuestDate.Valid {
+		t.Errorf("expected quest_date to be invalid (no date), got valid with %v", stub.lastCreateQuestParams.QuestDate.Time)
+	}
+}
+
+func TestHandleRetryQuest_postInvalidDate(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:        1,
+			Title:     "Failed Quest",
+			QuestType: "main",
+			Status:    "failed",
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleRetryQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("quest_date", "not-a-date")
+	req := httptest.NewRequest("POST", "/quests/1/retry", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+	if stub.createQuestCalled {
+		t.Error("expected CreateQuest NOT to be called")
 	}
 }

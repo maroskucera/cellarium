@@ -195,6 +195,8 @@ func main() {
 	mux.Handle("POST /quests/{id}/delete", handleDeleteQuest(queries))
 	mux.Handle("POST /quests/{id}/complete", handleCompleteQuest(queries))
 	mux.Handle("POST /quests/{id}/uncomplete", handleUncompleteQuest(queries))
+	mux.Handle("GET /quests/{id}/retry", handleRetryQuest(queries, tmpl))
+	mux.Handle("POST /quests/{id}/retry", handleRetryQuest(queries, tmpl))
 	mux.Handle("POST /quests/reorder", handleReorderQuest(queries))
 
 	// All quests

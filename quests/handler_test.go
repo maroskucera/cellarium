@@ -205,7 +205,8 @@ const testTemplates = `
 {{define "quest_new"}}<html><body>quest-new title={{.Quest.Title}}</body></html>{{end}}
 {{define "quest_edit"}}<html><body>quest-edit id={{.Quest.ID}}<div class="btn-row"><button type="submit">Save Changes</button><a href="/" class="btn btn-secondary">Cancel</a><form method="post" action="/quests/{{.Quest.ID}}/delete"><button type="submit" class="btn-danger-sm">Delete</button></form></div></body></html>{{end}}
 {{define "all_quests"}}<html><body>all-quests types={{len .Types}}</body></html>{{end}}
-{{define "quest_log"}}<html><body>quest-log days={{len .Days}}{{range .Days}}{{range .Quests}}{{if eq .Status "failed"}}<a href="/quests/{{.ID}}/retry">{{.Title}}</a>{{else}}<a href="/quests/{{.ID}}/edit">{{.Title}}</a>{{end}}{{end}}{{end}}</body></html>{{end}}
+{{define "quest_log"}}<html><body>quest-log days={{len .Days}}{{range .Days}}{{range .Quests}}<a href="/quests/{{.ID}}">{{.Title}}</a>{{if eq .Status "failed"}}<a href="/quests/{{.ID}}/retry" class="btn quest-retry-btn">↻</a>{{end}}{{end}}{{end}}</body></html>{{end}}
+{{define "quest_detail"}}<html><body>quest-detail id={{.Quest.ID}} title={{.Quest.Title}} status={{.Quest.Status}}{{if .Quest.Description}} desc={{.Quest.Description}}{{end}}{{if .Quest.QuestLineName}} line={{.Quest.QuestLineName}}{{end}}{{if .Quest.QuestGiver}} giver={{.Quest.QuestGiver}}{{end}}{{if .Quest.QuestDate}} date={{.Quest.QuestDate}}{{end}}{{if .Quest.ReminderTime}} reminder={{.Quest.ReminderTime}}{{end}}{{if .Quest.RecurrenceType}} recurrence={{.Quest.RecurrenceType}}{{end}}{{if eq .Quest.Status "failed"}} <a href="/quests/{{.Quest.ID}}/retry">Retry</a>{{end}}</body></html>{{end}}
 {{define "quest_retry"}}<html><body>quest-retry id={{.QuestID}} name={{.QuestName}} date={{.QuestDate}}</body></html>{{end}}
 {{define "quest_lines"}}<html><body>quest-lines count={{len .QuestLines}}</body></html>{{end}}
 {{define "quest_line_new"}}<html><body>quest-line-new</body></html>{{end}}
@@ -887,8 +888,11 @@ func TestHandleQuestLog_failedQuestRetryLink(t *testing.T) {
 		t.Errorf("expected 200, got %d", w.Code)
 	}
 	body := w.Body.String()
+	if !strings.Contains(body, `<a href="/quests/5">`) {
+		t.Errorf("expected detail link '/quests/5' in body, got: %s", body)
+	}
 	if !strings.Contains(body, "/quests/5/retry") {
-		t.Errorf("expected retry link '/quests/5/retry' in body, got: %s", body)
+		t.Errorf("expected retry button '/quests/5/retry' in body, got: %s", body)
 	}
 	if strings.Contains(body, "/quests/5/edit") {
 		t.Errorf("expected no edit link '/quests/5/edit' for failed quest, got: %s", body)
@@ -1099,5 +1103,178 @@ func TestHandleRetryQuest_postInvalidDate(t *testing.T) {
 	}
 	if stub.createQuestCalled {
 		t.Error("expected CreateQuest NOT to be called")
+	}
+}
+
+func TestHandleViewQuest_completed(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:          1,
+			Title:       "Done Quest",
+			QuestType:   "main",
+			Status:      "completed",
+			Description: pgtype.Text{String: "A description", Valid: true},
+			QuestGiver:  pgtype.Text{String: "The King", Valid: true},
+			QuestDate:   pgtype.Date{Time: time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC), Valid: true},
+			QuestLineID:  pgtype.Int8{Int64: 1, Valid: true},
+			ReminderTime: pgtype.Time{Microseconds: 9*3600_000_000 + 30*60_000_000, Valid: true},
+			CompletedAt:  pgtype.Timestamptz{Time: time.Date(2026, 3, 10, 14, 30, 0, 0, time.UTC), Valid: true},
+		},
+		questLine: sqlc.GetQuestLineRow{
+			ID:   1,
+			Name: "Main Story",
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleViewQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/1", nil)
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "quest-detail") {
+		t.Errorf("expected 'quest-detail' in body, got: %s", body)
+	}
+	if !strings.Contains(body, "Done Quest") {
+		t.Errorf("expected 'Done Quest' in body, got: %s", body)
+	}
+	if !strings.Contains(body, "giver=The King") {
+		t.Errorf("expected 'giver=The King' in body, got: %s", body)
+	}
+	if !strings.Contains(body, "line=Main Story") {
+		t.Errorf("expected 'line=Main Story' in body, got: %s", body)
+	}
+	if !strings.Contains(body, "desc=A description") {
+		t.Errorf("expected 'desc=A description' in body, got: %s", body)
+	}
+	if !strings.Contains(body, "reminder=09:30") {
+		t.Errorf("expected 'reminder=09:30' in body, got: %s", body)
+	}
+	if strings.Contains(body, "/retry") {
+		t.Errorf("expected no retry link for completed quest, got: %s", body)
+	}
+}
+
+func TestHandleViewQuest_failed(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:        2,
+			Title:     "Failed Quest",
+			QuestType: "side",
+			Status:    "failed",
+			FailedAt:  pgtype.Timestamptz{Time: time.Date(2026, 3, 14, 9, 0, 0, 0, time.UTC), Valid: true},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleViewQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/2", nil)
+	req.SetPathValue("id", "2")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "quest-detail") {
+		t.Errorf("expected 'quest-detail' in body, got: %s", body)
+	}
+	if !strings.Contains(body, "/quests/2/retry") {
+		t.Errorf("expected retry link in body for failed quest, got: %s", body)
+	}
+}
+
+func TestHandleViewQuest_noQuestLine(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:          3,
+			Title:       "Solo Quest",
+			QuestType:   "daily",
+			Status:      "completed",
+			CompletedAt: pgtype.Timestamptz{Time: time.Date(2026, 3, 15, 8, 0, 0, 0, time.UTC), Valid: true},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleViewQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/3", nil)
+	req.SetPathValue("id", "3")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if strings.Contains(body, "line=") {
+		t.Errorf("expected no quest line in body, got: %s", body)
+	}
+}
+
+func TestHandleViewQuest_notFound(t *testing.T) {
+	stub := &stubQuerier{
+		err: errors.New("not found"),
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleViewQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/99", nil)
+	req.SetPathValue("id", "99")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestHandleViewQuest_invalidID(t *testing.T) {
+	stub := &stubQuerier{}
+	tmpl := mustParseTestTemplates(t)
+	h := handleViewQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/abc", nil)
+	req.SetPathValue("id", "abc")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestHandleViewQuest_recurrence(t *testing.T) {
+	stub := &stubQuerier{
+		quest: sqlc.QuestsQuest{
+			ID:             4,
+			Title:          "Recurring Quest",
+			QuestType:      "daily",
+			Status:         "completed",
+			CompletedAt:    pgtype.Timestamptz{Time: time.Date(2026, 3, 15, 8, 0, 0, 0, time.UTC), Valid: true},
+			RecurrenceType: pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:    pgtype.Int4{Int32: 3, Valid: true},
+			RecurrenceUnit: pgtype.Text{String: "days", Valid: true},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleViewQuest(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quests/4", nil)
+	req.SetPathValue("id", "4")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "recurrence=every") {
+		t.Errorf("expected 'recurrence=every' in body, got: %s", body)
 	}
 }

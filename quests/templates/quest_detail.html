@@ -1,0 +1,70 @@
+<!--
+Cellarium Quests — quest detail view (read-only)
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "quest_detail"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quests — {{.Quest.Title}}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+    {{template "_nav" .Nav}}
+    <h1>{{.Quest.Title}}</h1>
+
+    {{if .Quest.Description}}
+    <p>{{.Quest.Description}}</p>
+    {{end}}
+
+    <fieldset>
+        <legend>Details</legend>
+
+        <p><strong>Type:</strong> {{.Quest.QuestType}}</p>
+
+        {{if .Quest.QuestDate}}<p><strong>Due Date:</strong> {{.Quest.QuestDate}}</p>{{end}}
+
+        {{if .Quest.QuestLineName}}<p><strong>Quest Line:</strong> {{.Quest.QuestLineName}}</p>{{end}}
+
+        {{if .Quest.QuestGiver}}<p><strong>Quest Giver:</strong> {{.Quest.QuestGiver}}</p>{{end}}
+
+        {{if .Quest.ReminderTime}}<p><strong>Reminder:</strong> {{.Quest.ReminderTime}}</p>{{end}}
+
+        {{if .Quest.RecurrenceType}}
+        <p><strong>Recurrence:</strong> {{.Quest.RecurrenceType}}{{if .Quest.RecurrenceN}} {{.Quest.RecurrenceN}}{{end}}{{if .Quest.RecurrenceUnit}} {{.Quest.RecurrenceUnit}}{{end}}</p>
+        {{end}}
+    </fieldset>
+
+    <fieldset>
+        <legend>Status</legend>
+
+        <p><strong>Status:</strong> {{.Quest.Status}}</p>
+
+        {{if .Quest.CompletedAt}}<p><strong>Completed:</strong> {{.Quest.CompletedAt}}</p>{{end}}
+
+        {{if .Quest.FailedAt}}<p><strong>Failed:</strong> {{.Quest.FailedAt}}</p>{{end}}
+    </fieldset>
+
+    <div class="btn-row">
+        {{if eq .Quest.Status "failed"}}<a href="/quests/{{.Quest.ID}}/retry" class="btn">Retry Quest</a>{{end}}
+        <a href="/log" class="btn btn-secondary">Back to Log</a>
+    </div>
+</main>
+</body>
+</html>
+{{end}}

@@ -187,6 +187,96 @@ func handleNewQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 	})
 }
 
+type questDetailData struct {
+	Nav   string
+	Quest questDetailDisplay
+}
+
+type questDetailDisplay struct {
+	ID             int64
+	Title          string
+	Description    string
+	QuestType      string
+	QuestDate      string
+	QuestLineName  string
+	QuestGiver     string
+	ReminderTime   string
+	Status         string
+	CompletedAt    string
+	FailedAt       string
+	RecurrenceType string
+	RecurrenceN    string
+	RecurrenceUnit string
+}
+
+func handleViewQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid quest id", http.StatusBadRequest)
+			return
+		}
+
+		ctx := r.Context()
+		quest, err := q.GetQuest(ctx, id)
+		if err != nil {
+			http.Error(w, "quest not found", http.StatusNotFound)
+			return
+		}
+
+		d := questDetailDisplay{
+			ID:        quest.ID,
+			Title:     quest.Title,
+			QuestType: quest.QuestType,
+			Status:    quest.Status,
+		}
+
+		if quest.Description.Valid {
+			d.Description = quest.Description.String
+		}
+		if quest.QuestDate.Valid {
+			d.QuestDate = quest.QuestDate.Time.Format("Monday, 2 January 2006")
+		}
+		if quest.QuestGiver.Valid {
+			d.QuestGiver = quest.QuestGiver.String
+		}
+		if quest.ReminderTime.Valid {
+			h := quest.ReminderTime.Microseconds / 3600_000_000
+			m := (quest.ReminderTime.Microseconds % 3600_000_000) / 60_000_000
+			d.ReminderTime = time.Date(0, 1, 1, int(h), int(m), 0, 0, time.UTC).Format("15:04")
+		}
+		if quest.CompletedAt.Valid {
+			d.CompletedAt = quest.CompletedAt.Time.In(appLocation).Format("2 Jan 2006, 15:04")
+		}
+		if quest.FailedAt.Valid {
+			d.FailedAt = quest.FailedAt.Time.In(appLocation).Format("2 Jan 2006, 15:04")
+		}
+		if quest.RecurrenceType.Valid && quest.RecurrenceType.String != "" {
+			d.RecurrenceType = quest.RecurrenceType.String
+		}
+		if quest.RecurrenceN.Valid {
+			d.RecurrenceN = strconv.Itoa(int(quest.RecurrenceN.Int32))
+		}
+		if quest.RecurrenceUnit.Valid {
+			d.RecurrenceUnit = quest.RecurrenceUnit.String
+		}
+
+		if quest.QuestLineID.Valid {
+			if line, err := q.GetQuestLine(ctx, quest.QuestLineID.Int64); err == nil {
+				d.QuestLineName = line.Name
+			}
+		}
+
+		data := questDetailData{
+			Nav:   "log",
+			Quest: d,
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		renderTemplate(w, tmpl, "quest_detail", data)
+	})
+}
+
 type retryFormData struct {
 	Nav       string
 	QuestID   int64

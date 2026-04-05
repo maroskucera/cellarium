@@ -35,7 +35,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <ul class="quest-list" style="list-style:none;padding:0;margin:0">
         {{range .Quests}}
             <li class="quest-card {{if eq .Status "completed"}}status-completed{{else}}status-failed{{end}}" data-quest-id="{{.ID}}">
-                {{if eq .Status "failed"}}<a href="/quests/{{.ID}}/retry" class="quest-card-link">{{else}}<a href="/quests/{{.ID}}/edit" class="quest-card-link">{{end}}
+                <a href="/quests/{{.ID}}" class="quest-card-link">
                     <div class="quest-card-body">
                         <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
                         <p class="quest-meta">

@@ -17,23 +17,26 @@ type QuestsPushSubscription struct {
 }
 
 type QuestsQuest struct {
-	ID             int64              `json:"id"`
-	Title          string             `json:"title"`
-	Description    pgtype.Text        `json:"description"`
-	QuestType      string             `json:"quest_type"`
-	QuestDate      pgtype.Date        `json:"quest_date"`
-	QuestLineID    pgtype.Int8        `json:"quest_line_id"`
-	QuestGiver     pgtype.Text        `json:"quest_giver"`
-	ReminderTime   pgtype.Time        `json:"reminder_time"`
-	ReminderSentAt pgtype.Date        `json:"reminder_sent_at"`
-	SortOrder      int32              `json:"sort_order"`
-	Status         string             `json:"status"`
-	CompletedAt    pgtype.Timestamptz `json:"completed_at"`
-	FailedAt       pgtype.Timestamptz `json:"failed_at"`
-	RecurrenceType pgtype.Text        `json:"recurrence_type"`
-	RecurrenceN    pgtype.Int4        `json:"recurrence_n"`
-	RecurrenceUnit pgtype.Text        `json:"recurrence_unit"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ID                     int64              `json:"id"`
+	Title                  string             `json:"title"`
+	Description            pgtype.Text        `json:"description"`
+	QuestType              string             `json:"quest_type"`
+	QuestDate              pgtype.Date        `json:"quest_date"`
+	QuestLineID            pgtype.Int8        `json:"quest_line_id"`
+	QuestGiver             pgtype.Text        `json:"quest_giver"`
+	ReminderTime           pgtype.Time        `json:"reminder_time"`
+	ReminderSentAt         pgtype.Date        `json:"reminder_sent_at"`
+	SortOrder              int32              `json:"sort_order"`
+	Status                 string             `json:"status"`
+	CompletedAt            pgtype.Timestamptz `json:"completed_at"`
+	FailedAt               pgtype.Timestamptz `json:"failed_at"`
+	RecurrenceType         pgtype.Text        `json:"recurrence_type"`
+	RecurrenceN            pgtype.Int4        `json:"recurrence_n"`
+	RecurrenceUnit         pgtype.Text        `json:"recurrence_unit"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	RecurrenceEndDate      pgtype.Date        `json:"recurrence_end_date"`
+	RecurrenceInstance     pgtype.Int4        `json:"recurrence_instance"`
+	RecurrenceMaxInstances pgtype.Int4        `json:"recurrence_max_instances"`
 }
 
 type QuestsQuestLine struct {

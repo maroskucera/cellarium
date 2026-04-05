@@ -376,6 +376,136 @@ func TestHandleNewQuest_typeInheritance(t *testing.T) {
 	}
 }
 
+func TestHandleCreateQuest_endDateMode(t *testing.T) {
+	stub := &stubQuerier{}
+	tmpl := mustParseTestTemplates(t)
+	h := handleNewQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("title", "Recurring end date")
+	form.Set("quest_type", "side")
+	form.Set("quest_date", "2026-04-01")
+	form.Set("recurrence_type", "every")
+	form.Set("recurrence_n", "1")
+	form.Set("recurrence_unit", "days")
+	form.Set("recurrence_end_mode", "end_date")
+	form.Set("recurrence_end_date", "2026-04-30")
+	req := httptest.NewRequest("POST", "/quests/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	if !stub.lastCreateQuestParams.RecurrenceEndDate.Valid {
+		t.Fatal("expected RecurrenceEndDate to be set")
+	}
+	wantEnd := time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC)
+	if !stub.lastCreateQuestParams.RecurrenceEndDate.Time.Equal(wantEnd) {
+		t.Errorf("expected end date %v, got %v", wantEnd, stub.lastCreateQuestParams.RecurrenceEndDate.Time)
+	}
+	if stub.lastCreateQuestParams.RecurrenceInstance.Valid {
+		t.Error("expected RecurrenceInstance to be NULL for end_date mode")
+	}
+	if stub.lastCreateQuestParams.RecurrenceMaxInstances.Valid {
+		t.Error("expected RecurrenceMaxInstances to be NULL for end_date mode")
+	}
+}
+
+func TestHandleCreateQuest_endAfterMode(t *testing.T) {
+	stub := &stubQuerier{}
+	tmpl := mustParseTestTemplates(t)
+	h := handleNewQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("title", "Recurring end after")
+	form.Set("quest_type", "side")
+	form.Set("quest_date", "2026-04-01")
+	form.Set("recurrence_type", "every")
+	form.Set("recurrence_n", "1")
+	form.Set("recurrence_unit", "days")
+	form.Set("recurrence_end_mode", "end_after")
+	form.Set("recurrence_max_instances", "10")
+	req := httptest.NewRequest("POST", "/quests/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	if !stub.lastCreateQuestParams.RecurrenceMaxInstances.Valid || stub.lastCreateQuestParams.RecurrenceMaxInstances.Int32 != 10 {
+		t.Errorf("expected max instances 10, got %v", stub.lastCreateQuestParams.RecurrenceMaxInstances)
+	}
+	if !stub.lastCreateQuestParams.RecurrenceInstance.Valid || stub.lastCreateQuestParams.RecurrenceInstance.Int32 != 1 {
+		t.Errorf("expected instance 1, got %v", stub.lastCreateQuestParams.RecurrenceInstance)
+	}
+	if stub.lastCreateQuestParams.RecurrenceEndDate.Valid {
+		t.Error("expected RecurrenceEndDate to be NULL for end_after mode")
+	}
+}
+
+func TestHandleCreateQuest_endNeverMode(t *testing.T) {
+	stub := &stubQuerier{}
+	tmpl := mustParseTestTemplates(t)
+	h := handleNewQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("title", "Recurring never end")
+	form.Set("quest_type", "side")
+	form.Set("recurrence_type", "every")
+	form.Set("recurrence_n", "1")
+	form.Set("recurrence_unit", "days")
+	form.Set("recurrence_end_mode", "never")
+	req := httptest.NewRequest("POST", "/quests/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	if stub.lastCreateQuestParams.RecurrenceEndDate.Valid {
+		t.Error("expected RecurrenceEndDate to be NULL for never mode")
+	}
+	if stub.lastCreateQuestParams.RecurrenceMaxInstances.Valid {
+		t.Error("expected RecurrenceMaxInstances to be NULL for never mode")
+	}
+	if stub.lastCreateQuestParams.RecurrenceInstance.Valid {
+		t.Error("expected RecurrenceInstance to be NULL for never mode")
+	}
+}
+
+func TestHandleCreateQuest_afterCompletionIgnoresEndSettings(t *testing.T) {
+	stub := &stubQuerier{}
+	tmpl := mustParseTestTemplates(t)
+	h := handleNewQuest(stub, tmpl)
+
+	form := url.Values{}
+	form.Set("title", "After completion")
+	form.Set("quest_type", "side")
+	form.Set("recurrence_type", "after_completion")
+	form.Set("recurrence_n", "3")
+	form.Set("recurrence_unit", "days")
+	form.Set("recurrence_end_mode", "end_after")
+	form.Set("recurrence_max_instances", "5")
+	req := httptest.NewRequest("POST", "/quests/new", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303, got %d", w.Code)
+	}
+	if stub.lastCreateQuestParams.RecurrenceEndDate.Valid {
+		t.Error("expected RecurrenceEndDate to be NULL for after_completion")
+	}
+	if stub.lastCreateQuestParams.RecurrenceMaxInstances.Valid {
+		t.Error("expected RecurrenceMaxInstances to be NULL for after_completion")
+	}
+}
+
 func TestHandleCompleteQuest(t *testing.T) {
 	stub := &stubQuerier{
 		quest: sqlc.QuestsQuest{ID: 1, Title: "Test", QuestType: "side", Status: "active"},

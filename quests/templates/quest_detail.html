@@ -47,6 +47,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
         {{if .Quest.RecurrenceType}}
         <p><strong>Recurrence:</strong> {{.Quest.RecurrenceType}}{{if .Quest.RecurrenceN}} {{.Quest.RecurrenceN}}{{end}}{{if .Quest.RecurrenceUnit}} {{.Quest.RecurrenceUnit}}{{end}}</p>
+        {{if .Quest.RecurrenceEndDate}}<p><strong>Ends:</strong> {{.Quest.RecurrenceEndDate}}</p>{{end}}
+        {{if .Quest.RecurrenceMaxInstances}}<p><strong>Instance:</strong> {{.Quest.RecurrenceInstance}} of {{.Quest.RecurrenceMaxInstances}}</p>{{end}}
         {{end}}
     </fieldset>
 

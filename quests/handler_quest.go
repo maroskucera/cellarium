@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -44,17 +45,20 @@ type questFormData struct {
 }
 
 type questFormValues struct {
-	ID             int64
-	Title          string
-	Description    string
-	QuestType      string
-	QuestDate      string
-	QuestLineID    int64
-	QuestGiver     string
-	ReminderTime   string
-	RecurrenceType string
-	RecurrenceN    string
-	RecurrenceUnit string
+	ID                     int64
+	Title                  string
+	Description            string
+	QuestType              string
+	QuestDate              string
+	QuestLineID            int64
+	QuestGiver             string
+	ReminderTime           string
+	RecurrenceType         string
+	RecurrenceN            string
+	RecurrenceUnit         string
+	RecurrenceEndMode      string // "never", "end_date", "end_after"
+	RecurrenceEndDate      string
+	RecurrenceMaxInstances string
 }
 
 func parseQuestForm(r *http.Request) (sqlc.CreateQuestParams, error) {
@@ -115,6 +119,26 @@ func parseQuestForm(r *http.Request) (sqlc.CreateQuestParams, error) {
 		if recUnit := r.FormValue("recurrence_unit"); recUnit != "" {
 			params.RecurrenceUnit = pgtype.Text{String: recUnit, Valid: true}
 		}
+		if recType == "every" {
+			switch r.FormValue("recurrence_end_mode") {
+			case "end_date":
+				if endDateStr := r.FormValue("recurrence_end_date"); endDateStr != "" {
+					d, err := time.Parse("2006-01-02", endDateStr)
+					if err != nil {
+						return sqlc.CreateQuestParams{}, fmt.Errorf("invalid end date: %w", err)
+					}
+					params.RecurrenceEndDate = pgtype.Date{Time: d, Valid: true}
+				}
+			case "end_after":
+				if maxStr := r.FormValue("recurrence_max_instances"); maxStr != "" {
+					n, err := strconv.ParseInt(maxStr, 10, 32)
+					if err == nil && n > 0 {
+						params.RecurrenceMaxInstances = pgtype.Int4{Int32: int32(n), Valid: true}
+						params.RecurrenceInstance = pgtype.Int4{Int32: 1, Valid: true}
+					}
+				}
+			}
+		}
 	}
 
 	return params, nil
@@ -164,10 +188,11 @@ func handleNewQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 		}
 
 		fv := questFormValues{
-			QuestType:      "main",
-			RecurrenceType: "none",
-			RecurrenceN:    "1",
-			RecurrenceUnit: "days",
+			QuestType:         "main",
+			RecurrenceType:    "none",
+			RecurrenceN:       "1",
+			RecurrenceUnit:    "days",
+			RecurrenceEndMode: "never",
 		}
 
 		lines, err := loadQuestLines(q, r, 0)
@@ -193,20 +218,23 @@ type questDetailData struct {
 }
 
 type questDetailDisplay struct {
-	ID             int64
-	Title          string
-	Description    string
-	QuestType      string
-	QuestDate      string
-	QuestLineName  string
-	QuestGiver     string
-	ReminderTime   string
-	Status         string
-	CompletedAt    string
-	FailedAt       string
-	RecurrenceType string
-	RecurrenceN    string
-	RecurrenceUnit string
+	ID                     int64
+	Title                  string
+	Description            string
+	QuestType              string
+	QuestDate              string
+	QuestLineName          string
+	QuestGiver             string
+	ReminderTime           string
+	Status                 string
+	CompletedAt            string
+	FailedAt               string
+	RecurrenceType         string
+	RecurrenceN            string
+	RecurrenceUnit         string
+	RecurrenceEndDate      string
+	RecurrenceInstance     string
+	RecurrenceMaxInstances string
 }
 
 func handleViewQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
@@ -261,6 +289,15 @@ func handleViewQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 		if quest.RecurrenceUnit.Valid {
 			d.RecurrenceUnit = quest.RecurrenceUnit.String
 		}
+		if quest.RecurrenceEndDate.Valid {
+			d.RecurrenceEndDate = quest.RecurrenceEndDate.Time.Format("2 January 2006")
+		}
+		if quest.RecurrenceInstance.Valid {
+			d.RecurrenceInstance = strconv.Itoa(int(quest.RecurrenceInstance.Int32))
+		}
+		if quest.RecurrenceMaxInstances.Valid {
+			d.RecurrenceMaxInstances = strconv.Itoa(int(quest.RecurrenceMaxInstances.Int32))
+		}
 
 		if quest.QuestLineID.Valid {
 			if line, err := q.GetQuestLine(ctx, quest.QuestLineID.Int64); err == nil {
@@ -311,15 +348,18 @@ func handleRetryQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			}
 
 			params := sqlc.CreateQuestParams{
-				Title:          quest.Title,
-				QuestType:      quest.QuestType,
-				Description:    quest.Description,
-				QuestLineID:    quest.QuestLineID,
-				QuestGiver:     quest.QuestGiver,
-				ReminderTime:   quest.ReminderTime,
-				RecurrenceType: quest.RecurrenceType,
-				RecurrenceN:    quest.RecurrenceN,
-				RecurrenceUnit: quest.RecurrenceUnit,
+				Title:                  quest.Title,
+				QuestType:              quest.QuestType,
+				Description:            quest.Description,
+				QuestLineID:            quest.QuestLineID,
+				QuestGiver:             quest.QuestGiver,
+				ReminderTime:           quest.ReminderTime,
+				RecurrenceType:         quest.RecurrenceType,
+				RecurrenceN:            quest.RecurrenceN,
+				RecurrenceUnit:         quest.RecurrenceUnit,
+				RecurrenceEndDate:      quest.RecurrenceEndDate,
+				RecurrenceInstance:     quest.RecurrenceInstance,
+				RecurrenceMaxInstances: quest.RecurrenceMaxInstances,
 			}
 
 			if dateStr := r.FormValue("quest_date"); dateStr != "" {
@@ -385,18 +425,21 @@ func handleEditQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 				}
 			}
 			updateParams := sqlc.UpdateQuestParams{
-				ID:             id,
-				Title:          params.Title,
-				Description:    params.Description,
-				QuestType:      params.QuestType,
-				QuestDate:      params.QuestDate,
-				QuestLineID:    params.QuestLineID,
-				QuestGiver:     params.QuestGiver,
-				ReminderTime:   params.ReminderTime,
-				SortOrder:      quest.SortOrder,
-				RecurrenceType: params.RecurrenceType,
-				RecurrenceN:    params.RecurrenceN,
-				RecurrenceUnit: params.RecurrenceUnit,
+				ID:                     id,
+				Title:                  params.Title,
+				Description:            params.Description,
+				QuestType:              params.QuestType,
+				QuestDate:              params.QuestDate,
+				QuestLineID:            params.QuestLineID,
+				QuestGiver:             params.QuestGiver,
+				ReminderTime:           params.ReminderTime,
+				SortOrder:              quest.SortOrder,
+				RecurrenceType:         params.RecurrenceType,
+				RecurrenceN:            params.RecurrenceN,
+				RecurrenceUnit:         params.RecurrenceUnit,
+				RecurrenceEndDate:      params.RecurrenceEndDate,
+				RecurrenceInstance:     params.RecurrenceInstance,
+				RecurrenceMaxInstances: params.RecurrenceMaxInstances,
 			}
 			if err := q.UpdateQuest(ctx, updateParams); err != nil {
 				http.Error(w, "database error", http.StatusInternalServerError)
@@ -453,6 +496,15 @@ func handleEditQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 		} else {
 			fv.RecurrenceUnit = "days"
 		}
+		if quest.RecurrenceMaxInstances.Valid {
+			fv.RecurrenceEndMode = "end_after"
+			fv.RecurrenceMaxInstances = strconv.Itoa(int(quest.RecurrenceMaxInstances.Int32))
+		} else if quest.RecurrenceEndDate.Valid {
+			fv.RecurrenceEndMode = "end_date"
+			fv.RecurrenceEndDate = quest.RecurrenceEndDate.Time.Format("2006-01-02")
+		} else {
+			fv.RecurrenceEndMode = "never"
+		}
 
 		data := questFormData{
 			Nav:        "today",
@@ -500,8 +552,7 @@ func handleCompleteQuest(q sqlc.Querier) http.Handler {
 		}
 		now := timeNow()
 		if err := createNextRecurrence(ctx, q, quest, now, localToday(now).Time); err != nil {
-			// log but don't fail — quest is already completed
-			_ = err
+			log.Printf("createNextRecurrence for quest %d: %v", id, err)
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})

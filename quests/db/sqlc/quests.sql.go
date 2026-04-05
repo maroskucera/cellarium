@@ -22,23 +22,26 @@ func (q *Queries) CompleteQuest(ctx context.Context, id int64) error {
 
 const createQuest = `-- name: CreateQuest :one
 
-INSERT INTO quests.quests (title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, sort_order, recurrence_type, recurrence_n, recurrence_unit)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+INSERT INTO quests.quests (title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, sort_order, recurrence_type, recurrence_n, recurrence_unit, recurrence_end_date, recurrence_instance, recurrence_max_instances)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 RETURNING id
 `
 
 type CreateQuestParams struct {
-	Title          string      `json:"title"`
-	Description    pgtype.Text `json:"description"`
-	QuestType      string      `json:"quest_type"`
-	QuestDate      pgtype.Date `json:"quest_date"`
-	QuestLineID    pgtype.Int8 `json:"quest_line_id"`
-	QuestGiver     pgtype.Text `json:"quest_giver"`
-	ReminderTime   pgtype.Time `json:"reminder_time"`
-	SortOrder      int32       `json:"sort_order"`
-	RecurrenceType pgtype.Text `json:"recurrence_type"`
-	RecurrenceN    pgtype.Int4 `json:"recurrence_n"`
-	RecurrenceUnit pgtype.Text `json:"recurrence_unit"`
+	Title                  string      `json:"title"`
+	Description            pgtype.Text `json:"description"`
+	QuestType              string      `json:"quest_type"`
+	QuestDate              pgtype.Date `json:"quest_date"`
+	QuestLineID            pgtype.Int8 `json:"quest_line_id"`
+	QuestGiver             pgtype.Text `json:"quest_giver"`
+	ReminderTime           pgtype.Time `json:"reminder_time"`
+	SortOrder              int32       `json:"sort_order"`
+	RecurrenceType         pgtype.Text `json:"recurrence_type"`
+	RecurrenceN            pgtype.Int4 `json:"recurrence_n"`
+	RecurrenceUnit         pgtype.Text `json:"recurrence_unit"`
+	RecurrenceEndDate      pgtype.Date `json:"recurrence_end_date"`
+	RecurrenceInstance     pgtype.Int4 `json:"recurrence_instance"`
+	RecurrenceMaxInstances pgtype.Int4 `json:"recurrence_max_instances"`
 }
 
 // Cellarium Quests — quest queries
@@ -69,6 +72,9 @@ func (q *Queries) CreateQuest(ctx context.Context, arg CreateQuestParams) (int64
 		arg.RecurrenceType,
 		arg.RecurrenceN,
 		arg.RecurrenceUnit,
+		arg.RecurrenceEndDate,
+		arg.RecurrenceInstance,
+		arg.RecurrenceMaxInstances,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -85,7 +91,7 @@ func (q *Queries) DeleteQuest(ctx context.Context, id int64) error {
 }
 
 const failOverdueQuests = `-- name: FailOverdueQuests :many
-UPDATE quests.quests SET status = 'failed', failed_at = now() WHERE status = 'active' AND quest_date IS NOT NULL AND quest_date < $1 RETURNING id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
+UPDATE quests.quests SET status = 'failed', failed_at = now() WHERE status = 'active' AND quest_date IS NOT NULL AND quest_date < $1 RETURNING id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at, recurrence_end_date, recurrence_instance, recurrence_max_instances
 `
 
 func (q *Queries) FailOverdueQuests(ctx context.Context, today pgtype.Date) ([]QuestsQuest, error) {
@@ -115,6 +121,9 @@ func (q *Queries) FailOverdueQuests(ctx context.Context, today pgtype.Date) ([]Q
 			&i.RecurrenceN,
 			&i.RecurrenceUnit,
 			&i.CreatedAt,
+			&i.RecurrenceEndDate,
+			&i.RecurrenceInstance,
+			&i.RecurrenceMaxInstances,
 		); err != nil {
 			return nil, err
 		}
@@ -136,7 +145,7 @@ func (q *Queries) FailQuest(ctx context.Context, id int64) error {
 }
 
 const getQuest = `-- name: GetQuest :one
-SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
+SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at, recurrence_end_date, recurrence_instance, recurrence_max_instances
 FROM quests.quests WHERE id = $1
 `
 
@@ -161,12 +170,15 @@ func (q *Queries) GetQuest(ctx context.Context, id int64) (QuestsQuest, error) {
 		&i.RecurrenceN,
 		&i.RecurrenceUnit,
 		&i.CreatedAt,
+		&i.RecurrenceEndDate,
+		&i.RecurrenceInstance,
+		&i.RecurrenceMaxInstances,
 	)
 	return i, err
 }
 
 const listActiveAndCompletedQuests = `-- name: ListActiveAndCompletedQuests :many
-SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
+SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at, recurrence_end_date, recurrence_instance, recurrence_max_instances
 FROM quests.quests WHERE status IN ('active', 'completed') ORDER BY quest_type ASC, sort_order ASC, id ASC
 `
 
@@ -197,6 +209,9 @@ func (q *Queries) ListActiveAndCompletedQuests(ctx context.Context) ([]QuestsQue
 			&i.RecurrenceN,
 			&i.RecurrenceUnit,
 			&i.CreatedAt,
+			&i.RecurrenceEndDate,
+			&i.RecurrenceInstance,
+			&i.RecurrenceMaxInstances,
 		); err != nil {
 			return nil, err
 		}
@@ -209,7 +224,7 @@ func (q *Queries) ListActiveAndCompletedQuests(ctx context.Context) ([]QuestsQue
 }
 
 const listActiveQuests = `-- name: ListActiveQuests :many
-SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
+SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at, recurrence_end_date, recurrence_instance, recurrence_max_instances
 FROM quests.quests WHERE status = 'active' ORDER BY sort_order ASC, id ASC
 `
 
@@ -240,6 +255,9 @@ func (q *Queries) ListActiveQuests(ctx context.Context) ([]QuestsQuest, error) {
 			&i.RecurrenceN,
 			&i.RecurrenceUnit,
 			&i.CreatedAt,
+			&i.RecurrenceEndDate,
+			&i.RecurrenceInstance,
+			&i.RecurrenceMaxInstances,
 		); err != nil {
 			return nil, err
 		}
@@ -252,7 +270,7 @@ func (q *Queries) ListActiveQuests(ctx context.Context) ([]QuestsQuest, error) {
 }
 
 const listDueReminders = `-- name: ListDueReminders :many
-SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
+SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at, recurrence_end_date, recurrence_instance, recurrence_max_instances
 FROM quests.quests WHERE status = 'active' AND reminder_time IS NOT NULL AND reminder_time <= $1 AND (reminder_sent_at IS NULL OR reminder_sent_at < $2)
 `
 
@@ -288,6 +306,9 @@ func (q *Queries) ListDueReminders(ctx context.Context, arg ListDueRemindersPara
 			&i.RecurrenceN,
 			&i.RecurrenceUnit,
 			&i.CreatedAt,
+			&i.RecurrenceEndDate,
+			&i.RecurrenceInstance,
+			&i.RecurrenceMaxInstances,
 		); err != nil {
 			return nil, err
 		}
@@ -324,7 +345,7 @@ func (q *Queries) ListQuestGivers(ctx context.Context) ([]pgtype.Text, error) {
 }
 
 const listQuestLog = `-- name: ListQuestLog :many
-SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
+SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at, recurrence_end_date, recurrence_instance, recurrence_max_instances
 FROM quests.quests WHERE status IN ('completed','failed') ORDER BY COALESCE(completed_at, failed_at) DESC NULLS LAST, id DESC
 `
 
@@ -355,6 +376,9 @@ func (q *Queries) ListQuestLog(ctx context.Context) ([]QuestsQuest, error) {
 			&i.RecurrenceN,
 			&i.RecurrenceUnit,
 			&i.CreatedAt,
+			&i.RecurrenceEndDate,
+			&i.RecurrenceInstance,
+			&i.RecurrenceMaxInstances,
 		); err != nil {
 			return nil, err
 		}
@@ -367,7 +391,7 @@ func (q *Queries) ListQuestLog(ctx context.Context) ([]QuestsQuest, error) {
 }
 
 const listTodayQuests = `-- name: ListTodayQuests :many
-SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
+SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at, recurrence_end_date, recurrence_instance, recurrence_max_instances
 FROM quests.quests WHERE status = 'active' AND quest_date = $1 ORDER BY quest_type ASC, sort_order ASC, id ASC
 `
 
@@ -398,6 +422,9 @@ func (q *Queries) ListTodayQuests(ctx context.Context, questDate pgtype.Date) ([
 			&i.RecurrenceN,
 			&i.RecurrenceUnit,
 			&i.CreatedAt,
+			&i.RecurrenceEndDate,
+			&i.RecurrenceInstance,
+			&i.RecurrenceMaxInstances,
 		); err != nil {
 			return nil, err
 		}
@@ -447,22 +474,25 @@ func (q *Queries) UncompleteQuestAndResetDate(ctx context.Context, arg Uncomplet
 }
 
 const updateQuest = `-- name: UpdateQuest :exec
-UPDATE quests.quests SET title = $1, description = $2, quest_type = $3, quest_date = $4, quest_line_id = $5, quest_giver = $6, reminder_time = $7, sort_order = $8, recurrence_type = $9, recurrence_n = $10, recurrence_unit = $11 WHERE id = $12
+UPDATE quests.quests SET title = $1, description = $2, quest_type = $3, quest_date = $4, quest_line_id = $5, quest_giver = $6, reminder_time = $7, sort_order = $8, recurrence_type = $9, recurrence_n = $10, recurrence_unit = $11, recurrence_end_date = $12, recurrence_instance = $13, recurrence_max_instances = $14 WHERE id = $15
 `
 
 type UpdateQuestParams struct {
-	Title          string      `json:"title"`
-	Description    pgtype.Text `json:"description"`
-	QuestType      string      `json:"quest_type"`
-	QuestDate      pgtype.Date `json:"quest_date"`
-	QuestLineID    pgtype.Int8 `json:"quest_line_id"`
-	QuestGiver     pgtype.Text `json:"quest_giver"`
-	ReminderTime   pgtype.Time `json:"reminder_time"`
-	SortOrder      int32       `json:"sort_order"`
-	RecurrenceType pgtype.Text `json:"recurrence_type"`
-	RecurrenceN    pgtype.Int4 `json:"recurrence_n"`
-	RecurrenceUnit pgtype.Text `json:"recurrence_unit"`
-	ID             int64       `json:"id"`
+	Title                  string      `json:"title"`
+	Description            pgtype.Text `json:"description"`
+	QuestType              string      `json:"quest_type"`
+	QuestDate              pgtype.Date `json:"quest_date"`
+	QuestLineID            pgtype.Int8 `json:"quest_line_id"`
+	QuestGiver             pgtype.Text `json:"quest_giver"`
+	ReminderTime           pgtype.Time `json:"reminder_time"`
+	SortOrder              int32       `json:"sort_order"`
+	RecurrenceType         pgtype.Text `json:"recurrence_type"`
+	RecurrenceN            pgtype.Int4 `json:"recurrence_n"`
+	RecurrenceUnit         pgtype.Text `json:"recurrence_unit"`
+	RecurrenceEndDate      pgtype.Date `json:"recurrence_end_date"`
+	RecurrenceInstance     pgtype.Int4 `json:"recurrence_instance"`
+	RecurrenceMaxInstances pgtype.Int4 `json:"recurrence_max_instances"`
+	ID                     int64       `json:"id"`
 }
 
 func (q *Queries) UpdateQuest(ctx context.Context, arg UpdateQuestParams) error {
@@ -478,6 +508,9 @@ func (q *Queries) UpdateQuest(ctx context.Context, arg UpdateQuestParams) error 
 		arg.RecurrenceType,
 		arg.RecurrenceN,
 		arg.RecurrenceUnit,
+		arg.RecurrenceEndDate,
+		arg.RecurrenceInstance,
+		arg.RecurrenceMaxInstances,
 		arg.ID,
 	)
 	return err

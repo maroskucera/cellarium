@@ -98,25 +98,53 @@ func createNextRecurrence(ctx context.Context, q sqlc.Querier, quest sqlc.Quests
 		return nil
 	}
 
-	// For "every" recurrence, skip forward until nextDate is today or later.
+	instanceNum := int(quest.RecurrenceInstance.Int32)
+	maxInstances := int(quest.RecurrenceMaxInstances.Int32)
+
+	// End conditions (end date, max instances) only apply to "every" recurrence.
+	// "after_completion" has no fixed schedule to bound, so end settings are ignored.
 	if quest.RecurrenceType.String == "every" {
 		for nextDate.Before(today) {
+			instanceNum++
+			if maxInstances > 0 && instanceNum >= maxInstances {
+				return nil
+			}
 			nextDate = addInterval(nextDate)
+		}
+
+		// Count the instance we're about to create.
+		instanceNum++
+		if maxInstances > 0 && instanceNum > maxInstances {
+			return nil
+		}
+
+		// End-date check (inclusive: nextDate on end_date is allowed).
+		if quest.RecurrenceEndDate.Valid && nextDate.After(quest.RecurrenceEndDate.Time) {
+			return nil
 		}
 	}
 
+	// Build instance tracking for the new quest.
+	var nextInstance pgtype.Int4
+	if maxInstances > 0 {
+		nextInstance = pgtype.Int4{Int32: int32(instanceNum), Valid: true}
+	}
+
 	_, err := q.CreateQuest(ctx, sqlc.CreateQuestParams{
-		Title:          quest.Title,
-		Description:    quest.Description,
-		QuestType:      quest.QuestType,
-		QuestDate:      pgtype.Date{Time: nextDate, Valid: true},
-		QuestLineID:    quest.QuestLineID,
-		QuestGiver:     quest.QuestGiver,
-		ReminderTime:   quest.ReminderTime,
-		SortOrder:      quest.SortOrder,
-		RecurrenceType: quest.RecurrenceType,
-		RecurrenceN:    quest.RecurrenceN,
-		RecurrenceUnit: quest.RecurrenceUnit,
+		Title:                  quest.Title,
+		Description:            quest.Description,
+		QuestType:              quest.QuestType,
+		QuestDate:              pgtype.Date{Time: nextDate, Valid: true},
+		QuestLineID:            quest.QuestLineID,
+		QuestGiver:             quest.QuestGiver,
+		ReminderTime:           quest.ReminderTime,
+		SortOrder:              quest.SortOrder,
+		RecurrenceType:         quest.RecurrenceType,
+		RecurrenceN:            quest.RecurrenceN,
+		RecurrenceUnit:         quest.RecurrenceUnit,
+		RecurrenceEndDate:      quest.RecurrenceEndDate,
+		RecurrenceInstance:     nextInstance,
+		RecurrenceMaxInstances: quest.RecurrenceMaxInstances,
 	})
 	return err
 }

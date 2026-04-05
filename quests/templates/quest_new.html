@@ -87,6 +87,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                     </select>
                 </div>
             </div>
+            <div id="recurrence-end-section">
+                <label for="recurrence_end_mode">Ends</label>
+                <select id="recurrence_end_mode" name="recurrence_end_mode">
+                    <option value="never"{{if eq .Quest.RecurrenceEndMode "never"}} selected{{end}}>Never</option>
+                    <option value="end_date"{{if eq .Quest.RecurrenceEndMode "end_date"}} selected{{end}}>On date</option>
+                    <option value="end_after"{{if eq .Quest.RecurrenceEndMode "end_after"}} selected{{end}}>After N instances</option>
+                </select>
+                <div id="recurrence-end-date-field">
+                    <label for="recurrence_end_date">End Date</label>
+                    <input type="date" id="recurrence_end_date" name="recurrence_end_date" value="{{.Quest.RecurrenceEndDate}}">
+                </div>
+                <div id="recurrence-end-after-field">
+                    <label for="recurrence_max_instances">Total Instances</label>
+                    <input type="number" id="recurrence_max_instances" name="recurrence_max_instances" value="{{.Quest.RecurrenceMaxInstances}}" min="2" max="999">
+                </div>
+            </div>
         </fieldset>
 
         <button type="submit">Create Quest</button>
@@ -111,6 +127,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     }
     lineSelect.addEventListener('change', syncType);
     syncType();
+
+    var recType = document.getElementById('recurrence_type');
+    var recEndSection = document.getElementById('recurrence-end-section');
+    var recEndMode = document.getElementById('recurrence_end_mode');
+    var recEndDateField = document.getElementById('recurrence-end-date-field');
+    var recEndAfterField = document.getElementById('recurrence-end-after-field');
+    function syncRecurrenceEnd() {
+        var isEvery = recType.value === 'every';
+        recEndSection.style.display = isEvery ? '' : 'none';
+        if (isEvery) {
+            recEndDateField.style.display = recEndMode.value === 'end_date' ? '' : 'none';
+            recEndAfterField.style.display = recEndMode.value === 'end_after' ? '' : 'none';
+        }
+    }
+    recType.addEventListener('change', syncRecurrenceEnd);
+    recEndMode.addEventListener('change', syncRecurrenceEnd);
+    syncRecurrenceEnd();
 }());
 </script>
 </body>

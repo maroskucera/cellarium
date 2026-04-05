@@ -189,6 +189,292 @@ func TestCreateNextRecurrence(t *testing.T) {
 	})
 }
 
+func TestCreateNextRecurrence_EndSettings(t *testing.T) {
+	t.Run("every with end date within range", func(t *testing.T) {
+		stub := &stubQuerier{}
+		questDate := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2026, 4, 30, 0, 0, 0, 0, time.UTC)
+		today := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		quest := sqlc.QuestsQuest{
+			Title:             "Daily with end date",
+			QuestType:         "daily",
+			QuestDate:         pgtype.Date{Time: questDate, Valid: true},
+			RecurrenceType:    pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:       pgtype.Int4{Int32: 1, Valid: true},
+			RecurrenceUnit:    pgtype.Text{String: "days", Valid: true},
+			RecurrenceEndDate: pgtype.Date{Time: endDate, Valid: true},
+		}
+		err := createNextRecurrence(context.Background(), stub, quest, questDate, today)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !stub.createQuestCalled {
+			t.Fatal("expected CreateQuest to be called")
+		}
+		wantDate := time.Date(2026, 3, 29, 0, 0, 0, 0, time.UTC)
+		if !stub.lastCreateQuestParams.QuestDate.Time.Equal(wantDate) {
+			t.Errorf("expected date %v, got %v", wantDate, stub.lastCreateQuestParams.QuestDate.Time)
+		}
+		if !stub.lastCreateQuestParams.RecurrenceEndDate.Valid {
+			t.Fatal("expected RecurrenceEndDate to be valid")
+		}
+		if !stub.lastCreateQuestParams.RecurrenceEndDate.Time.Equal(endDate) {
+			t.Errorf("expected end date %v, got %v", endDate, stub.lastCreateQuestParams.RecurrenceEndDate.Time)
+		}
+	})
+
+	t.Run("every with end date past end", func(t *testing.T) {
+		stub := &stubQuerier{}
+		questDate := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		today := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		quest := sqlc.QuestsQuest{
+			Title:             "Daily past end",
+			QuestType:         "daily",
+			QuestDate:         pgtype.Date{Time: questDate, Valid: true},
+			RecurrenceType:    pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:       pgtype.Int4{Int32: 1, Valid: true},
+			RecurrenceUnit:    pgtype.Text{String: "days", Valid: true},
+			RecurrenceEndDate: pgtype.Date{Time: endDate, Valid: true},
+		}
+		err := createNextRecurrence(context.Background(), stub, quest, questDate, today)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if stub.createQuestCalled {
+			t.Error("expected CreateQuest not to be called when next date is past end date")
+		}
+	})
+
+	t.Run("every with end date equals next date", func(t *testing.T) {
+		stub := &stubQuerier{}
+		questDate := time.Date(2026, 3, 27, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		today := time.Date(2026, 3, 27, 0, 0, 0, 0, time.UTC)
+		quest := sqlc.QuestsQuest{
+			Title:             "Daily at boundary",
+			QuestType:         "daily",
+			QuestDate:         pgtype.Date{Time: questDate, Valid: true},
+			RecurrenceType:    pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:       pgtype.Int4{Int32: 1, Valid: true},
+			RecurrenceUnit:    pgtype.Text{String: "days", Valid: true},
+			RecurrenceEndDate: pgtype.Date{Time: endDate, Valid: true},
+		}
+		err := createNextRecurrence(context.Background(), stub, quest, questDate, today)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !stub.createQuestCalled {
+			t.Fatal("expected CreateQuest to be called when next date equals end date (inclusive)")
+		}
+		wantDate := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		if !stub.lastCreateQuestParams.QuestDate.Time.Equal(wantDate) {
+			t.Errorf("expected date %v, got %v", wantDate, stub.lastCreateQuestParams.QuestDate.Time)
+		}
+		if !stub.lastCreateQuestParams.RecurrenceEndDate.Valid {
+			t.Fatal("expected RecurrenceEndDate to be inherited")
+		}
+		if !stub.lastCreateQuestParams.RecurrenceEndDate.Time.Equal(endDate) {
+			t.Errorf("expected end date %v, got %v", endDate, stub.lastCreateQuestParams.RecurrenceEndDate.Time)
+		}
+	})
+
+	t.Run("every with end date and skip-forward within range", func(t *testing.T) {
+		stub := &stubQuerier{}
+		questDate := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2026, 3, 25, 0, 0, 0, 0, time.UTC)
+		today := time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC)
+		quest := sqlc.QuestsQuest{
+			Title:             "Weekly skip within range",
+			QuestType:         "side",
+			QuestDate:         pgtype.Date{Time: questDate, Valid: true},
+			RecurrenceType:    pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:       pgtype.Int4{Int32: 7, Valid: true},
+			RecurrenceUnit:    pgtype.Text{String: "days", Valid: true},
+			RecurrenceEndDate: pgtype.Date{Time: endDate, Valid: true},
+		}
+		err := createNextRecurrence(context.Background(), stub, quest, questDate, today)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !stub.createQuestCalled {
+			t.Fatal("expected CreateQuest to be called")
+		}
+		// March 1 + 7 = 8, + 7 = 15, + 7 = 22; 22 <= 25 so it's within range
+		wantDate := time.Date(2026, 3, 22, 0, 0, 0, 0, time.UTC)
+		if !stub.lastCreateQuestParams.QuestDate.Time.Equal(wantDate) {
+			t.Errorf("expected date %v, got %v", wantDate, stub.lastCreateQuestParams.QuestDate.Time)
+		}
+		if !stub.lastCreateQuestParams.RecurrenceEndDate.Valid {
+			t.Fatal("expected RecurrenceEndDate to be inherited")
+		}
+		if !stub.lastCreateQuestParams.RecurrenceEndDate.Time.Equal(endDate) {
+			t.Errorf("expected end date %v, got %v", endDate, stub.lastCreateQuestParams.RecurrenceEndDate.Time)
+		}
+	})
+
+	t.Run("every with end date and skip-forward past end", func(t *testing.T) {
+		stub := &stubQuerier{}
+		questDate := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+		today := time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC)
+		quest := sqlc.QuestsQuest{
+			Title:             "Weekly skip past end",
+			QuestType:         "side",
+			QuestDate:         pgtype.Date{Time: questDate, Valid: true},
+			RecurrenceType:    pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:       pgtype.Int4{Int32: 7, Valid: true},
+			RecurrenceUnit:    pgtype.Text{String: "days", Valid: true},
+			RecurrenceEndDate: pgtype.Date{Time: endDate, Valid: true},
+		}
+		err := createNextRecurrence(context.Background(), stub, quest, questDate, today)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if stub.createQuestCalled {
+			t.Error("expected CreateQuest not to be called when skip-forward lands past end date")
+		}
+	})
+
+	t.Run("every with max instances within limit", func(t *testing.T) {
+		stub := &stubQuerier{}
+		questDate := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		today := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		quest := sqlc.QuestsQuest{
+			Title:                  "Daily with max",
+			QuestType:              "daily",
+			QuestDate:              pgtype.Date{Time: questDate, Valid: true},
+			RecurrenceType:         pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:            pgtype.Int4{Int32: 1, Valid: true},
+			RecurrenceUnit:         pgtype.Text{String: "days", Valid: true},
+			RecurrenceInstance:     pgtype.Int4{Int32: 3, Valid: true},
+			RecurrenceMaxInstances: pgtype.Int4{Int32: 5, Valid: true},
+		}
+		err := createNextRecurrence(context.Background(), stub, quest, questDate, today)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !stub.createQuestCalled {
+			t.Fatal("expected CreateQuest to be called")
+		}
+		if !stub.lastCreateQuestParams.RecurrenceInstance.Valid || stub.lastCreateQuestParams.RecurrenceInstance.Int32 != 4 {
+			t.Errorf("expected instance 4, got %v", stub.lastCreateQuestParams.RecurrenceInstance)
+		}
+		if !stub.lastCreateQuestParams.RecurrenceMaxInstances.Valid || stub.lastCreateQuestParams.RecurrenceMaxInstances.Int32 != 5 {
+			t.Errorf("expected max instances 5, got %v", stub.lastCreateQuestParams.RecurrenceMaxInstances)
+		}
+	})
+
+	t.Run("every with max instances at limit", func(t *testing.T) {
+		stub := &stubQuerier{}
+		questDate := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		today := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		quest := sqlc.QuestsQuest{
+			Title:                  "Daily at max",
+			QuestType:              "daily",
+			QuestDate:              pgtype.Date{Time: questDate, Valid: true},
+			RecurrenceType:         pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:            pgtype.Int4{Int32: 1, Valid: true},
+			RecurrenceUnit:         pgtype.Text{String: "days", Valid: true},
+			RecurrenceInstance:     pgtype.Int4{Int32: 5, Valid: true},
+			RecurrenceMaxInstances: pgtype.Int4{Int32: 5, Valid: true},
+		}
+		err := createNextRecurrence(context.Background(), stub, quest, questDate, today)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if stub.createQuestCalled {
+			t.Error("expected CreateQuest not to be called when instance equals max instances")
+		}
+	})
+
+	t.Run("every with max instances skip-forward exhausts", func(t *testing.T) {
+		stub := &stubQuerier{}
+		questDate := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+		today := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+		quest := sqlc.QuestsQuest{
+			Title:                  "Daily skip exhausts",
+			QuestType:              "daily",
+			QuestDate:              pgtype.Date{Time: questDate, Valid: true},
+			RecurrenceType:         pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:            pgtype.Int4{Int32: 1, Valid: true},
+			RecurrenceUnit:         pgtype.Text{String: "days", Valid: true},
+			RecurrenceInstance:     pgtype.Int4{Int32: 1, Valid: true},
+			RecurrenceMaxInstances: pgtype.Int4{Int32: 5, Valid: true},
+		}
+		err := createNextRecurrence(context.Background(), stub, quest, questDate, today)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if stub.createQuestCalled {
+			t.Error("expected CreateQuest not to be called when skip-forward exhausts max instances")
+		}
+	})
+
+	t.Run("every with max instances skip-forward has room", func(t *testing.T) {
+		stub := &stubQuerier{}
+		questDate := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+		today := time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC)
+		quest := sqlc.QuestsQuest{
+			Title:                  "Daily skip with room",
+			QuestType:              "daily",
+			QuestDate:              pgtype.Date{Time: questDate, Valid: true},
+			RecurrenceType:         pgtype.Text{String: "every", Valid: true},
+			RecurrenceN:            pgtype.Int4{Int32: 1, Valid: true},
+			RecurrenceUnit:         pgtype.Text{String: "days", Valid: true},
+			RecurrenceInstance:     pgtype.Int4{Int32: 1, Valid: true},
+			RecurrenceMaxInstances: pgtype.Int4{Int32: 10, Valid: true},
+		}
+		err := createNextRecurrence(context.Background(), stub, quest, questDate, today)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !stub.createQuestCalled {
+			t.Fatal("expected CreateQuest to be called")
+		}
+		// March 1 + 1 = 2 (inst 2), + 1 = 3 (inst 3), + 1 = 4 (inst 4), + 1 = 5 (not before today, exit)
+		// instanceNum = 4 + 1 = 5
+		wantDate := time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC)
+		if !stub.lastCreateQuestParams.QuestDate.Time.Equal(wantDate) {
+			t.Errorf("expected date %v, got %v", wantDate, stub.lastCreateQuestParams.QuestDate.Time)
+		}
+		if !stub.lastCreateQuestParams.RecurrenceInstance.Valid || stub.lastCreateQuestParams.RecurrenceInstance.Int32 != 5 {
+			t.Errorf("expected instance 5, got %v", stub.lastCreateQuestParams.RecurrenceInstance)
+		}
+	})
+
+	t.Run("after_completion ignores end settings", func(t *testing.T) {
+		stub := &stubQuerier{}
+		questDate := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2026, 3, 28, 0, 0, 0, 0, time.UTC)
+		baseTime := time.Date(2026, 3, 29, 12, 0, 0, 0, time.UTC)
+		today := time.Date(2026, 3, 29, 0, 0, 0, 0, time.UTC)
+		quest := sqlc.QuestsQuest{
+			Title:                  "After completion ignores end",
+			QuestType:              "side",
+			QuestDate:              pgtype.Date{Time: questDate, Valid: true},
+			RecurrenceType:         pgtype.Text{String: "after_completion", Valid: true},
+			RecurrenceN:            pgtype.Int4{Int32: 3, Valid: true},
+			RecurrenceUnit:         pgtype.Text{String: "days", Valid: true},
+			RecurrenceEndDate:      pgtype.Date{Time: endDate, Valid: true},
+			RecurrenceInstance:     pgtype.Int4{Int32: 1, Valid: true},
+			RecurrenceMaxInstances: pgtype.Int4{Int32: 1, Valid: true},
+		}
+		err := createNextRecurrence(context.Background(), stub, quest, baseTime, today)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !stub.createQuestCalled {
+			t.Fatal("expected CreateQuest to be called (after_completion ignores end settings)")
+		}
+		// baseTime (March 29 12:00) + 3 days = April 1 12:00
+		wantDate := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
+		if !stub.lastCreateQuestParams.QuestDate.Time.Equal(wantDate) {
+			t.Errorf("expected date %v, got %v", wantDate, stub.lastCreateQuestParams.QuestDate.Time)
+		}
+	})
+}
+
 func TestEnsureFailedQuests_createsNextRecurrence(t *testing.T) {
 	today := pgtype.Date{Time: time.Date(2026, 3, 29, 0, 0, 0, 0, time.UTC), Valid: true}
 	stub := &stubQuerier{

@@ -70,13 +70,13 @@ func toQuestDisplay(q sqlc.QuestsQuest) questDisplay {
 	return d
 }
 
-func handleToday(q sqlc.Querier, tmpl *template.Template) http.Handler {
+func handleToday(q sqlc.Querier, tx txRunner, tmpl *template.Template) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		now := timeNow()
 		today := localToday(now)
 
-		if err := ensureFailedQuests(ctx, q, today); err != nil {
+		if err := ensureFailedQuests(ctx, tx, today); err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}

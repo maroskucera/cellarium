@@ -84,13 +84,46 @@ func (q *Queries) DeleteQuest(ctx context.Context, id int64) error {
 	return err
 }
 
-const failOverdueQuests = `-- name: FailOverdueQuests :exec
-UPDATE quests.quests SET status = 'failed', failed_at = now() WHERE status = 'active' AND quest_date IS NOT NULL AND quest_date < $1
+const failOverdueQuests = `-- name: FailOverdueQuests :many
+UPDATE quests.quests SET status = 'failed', failed_at = now() WHERE status = 'active' AND quest_date IS NOT NULL AND quest_date < $1 RETURNING id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at
 `
 
-func (q *Queries) FailOverdueQuests(ctx context.Context, today pgtype.Date) error {
-	_, err := q.db.Exec(ctx, failOverdueQuests, today)
-	return err
+func (q *Queries) FailOverdueQuests(ctx context.Context, today pgtype.Date) ([]QuestsQuest, error) {
+	rows, err := q.db.Query(ctx, failOverdueQuests, today)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuestsQuest
+	for rows.Next() {
+		var i QuestsQuest
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.QuestType,
+			&i.QuestDate,
+			&i.QuestLineID,
+			&i.QuestGiver,
+			&i.ReminderTime,
+			&i.ReminderSentAt,
+			&i.SortOrder,
+			&i.Status,
+			&i.CompletedAt,
+			&i.FailedAt,
+			&i.RecurrenceType,
+			&i.RecurrenceN,
+			&i.RecurrenceUnit,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const failQuest = `-- name: FailQuest :exec

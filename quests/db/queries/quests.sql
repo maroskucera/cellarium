@@ -44,8 +44,8 @@ UPDATE quests.quests SET status = 'completed', completed_at = now() WHERE id = @
 -- name: FailQuest :exec
 UPDATE quests.quests SET status = 'failed', failed_at = now() WHERE id = @id;
 
--- name: FailOverdueQuests :exec
-UPDATE quests.quests SET status = 'failed', failed_at = now() WHERE status = 'active' AND quest_date IS NOT NULL AND quest_date < @today;
+-- name: FailOverdueQuests :many
+UPDATE quests.quests SET status = 'failed', failed_at = now() WHERE status = 'active' AND quest_date IS NOT NULL AND quest_date < @today RETURNING *;
 
 -- name: DeleteQuest :exec
 DELETE FROM quests.quests WHERE id = @id;

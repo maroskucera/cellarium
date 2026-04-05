@@ -498,7 +498,8 @@ func handleCompleteQuest(q sqlc.Querier) http.Handler {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
-		if err := createNextRecurrence(ctx, q, quest, timeNow()); err != nil {
+		now := timeNow()
+		if err := createNextRecurrence(ctx, q, quest, now, localToday(now).Time); err != nil {
 			// log but don't fail — quest is already completed
 			_ = err
 		}

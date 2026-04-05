@@ -63,7 +63,7 @@ type Querier interface {
 	DeletePushSubscription(ctx context.Context, endpoint string) error
 	DeleteQuest(ctx context.Context, id int64) error
 	DeleteQuestLine(ctx context.Context, id int64) error
-	FailOverdueQuests(ctx context.Context, today pgtype.Date) error
+	FailOverdueQuests(ctx context.Context, today pgtype.Date) ([]QuestsQuest, error)
 	FailQuest(ctx context.Context, id int64) error
 	GetQuest(ctx context.Context, id int64) (QuestsQuest, error)
 	GetQuestLine(ctx context.Context, id int64) (GetQuestLineRow, error)

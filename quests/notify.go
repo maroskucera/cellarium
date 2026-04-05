@@ -34,7 +34,7 @@ type notifyConfig struct {
 
 // startTicker runs the background goroutine that checks reminders and failures.
 // Call with go startTicker(ctx, q, cfg).
-func startTicker(ctx context.Context, q sqlc.Querier, cfg notifyConfig) {
+func startTicker(ctx context.Context, q sqlc.Querier, tx txRunner, cfg notifyConfig) {
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -42,14 +42,14 @@ func startTicker(ctx context.Context, q sqlc.Querier, cfg notifyConfig) {
 		case <-ctx.Done():
 			return
 		case t := <-ticker.C:
-			runTickerTasks(ctx, q, cfg, t)
+			runTickerTasks(ctx, q, tx, cfg, t)
 		}
 	}
 }
 
-func runTickerTasks(ctx context.Context, q sqlc.Querier, cfg notifyConfig, now time.Time) {
+func runTickerTasks(ctx context.Context, q sqlc.Querier, tx txRunner, cfg notifyConfig, now time.Time) {
 	today := localToday(now)
-	if err := ensureFailedQuests(ctx, q, today); err != nil {
+	if err := ensureFailedQuests(ctx, tx, today); err != nil {
 		log.Printf("ensureFailedQuests error: %v", err)
 	}
 	if cfg.VAPIDPrivateKey == "" {

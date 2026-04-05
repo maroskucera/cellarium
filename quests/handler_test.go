@@ -52,9 +52,11 @@ type stubQuerier struct {
 	createdID  int64
 	err        error
 
+	failedQuests                     []sqlc.QuestsQuest
 	failOverdueQuestsCall            *time.Time
 	createQuestCalled                bool
 	lastCreateQuestParams            sqlc.CreateQuestParams
+	createQuestCalls                 []sqlc.CreateQuestParams
 	completeCalled                   bool
 	failCalled                       bool
 	uncompleteCalled                 bool
@@ -84,6 +86,7 @@ func (s *stubQuerier) CreatePushSubscription(_ context.Context, arg sqlc.CreateP
 func (s *stubQuerier) CreateQuest(_ context.Context, arg sqlc.CreateQuestParams) (int64, error) {
 	s.createQuestCalled = true
 	s.lastCreateQuestParams = arg
+	s.createQuestCalls = append(s.createQuestCalls, arg)
 	return s.createdID, s.err
 }
 
@@ -104,10 +107,10 @@ func (s *stubQuerier) DeleteQuestLine(_ context.Context, _ int64) error {
 	return s.err
 }
 
-func (s *stubQuerier) FailOverdueQuests(_ context.Context, today pgtype.Date) error {
+func (s *stubQuerier) FailOverdueQuests(_ context.Context, today pgtype.Date) ([]sqlc.QuestsQuest, error) {
 	t := today.Time
 	s.failOverdueQuestsCall = &t
-	return s.err
+	return s.failedQuests, s.err
 }
 
 func (s *stubQuerier) FailQuest(_ context.Context, _ int64) error {
@@ -196,6 +199,15 @@ func (s *stubQuerier) UpdateQuestTypeByLine(_ context.Context, arg sqlc.UpdateQu
 	return s.err
 }
 
+// stubTxRunner wraps a stubQuerier for transaction-based tests.
+type stubTxRunner struct {
+	q *stubQuerier
+}
+
+func (r *stubTxRunner) RunInTx(_ context.Context, fn func(sqlc.Querier) error) error {
+	return fn(r.q)
+}
+
 //go:embed templates/*
 var testTemplatesFS embed.FS
 
@@ -225,7 +237,7 @@ func mustParseTestTemplates(t *testing.T) *template.Template {
 func TestHandleToday_empty(t *testing.T) {
 	stub := &stubQuerier{}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -252,7 +264,7 @@ func TestHandleToday_withQuests(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -478,7 +490,7 @@ func TestHandleAllQuests(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleAllQuests(stub, tmpl)
+	h := handleAllQuests(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/quests", nil)
 	w := httptest.NewRecorder()
@@ -507,7 +519,7 @@ func TestHandleAllQuests_typeGrouping(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleAllQuests(stub, tmpl)
+	h := handleAllQuests(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/quests", nil)
 	w := httptest.NewRecorder()
@@ -530,7 +542,7 @@ func TestHandleQuestLog(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleQuestLog(stub, tmpl)
+	h := handleQuestLog(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/log", nil)
 	w := httptest.NewRecorder()
@@ -652,7 +664,7 @@ func TestHandleToday_noQuestDateInOutput(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -709,7 +721,7 @@ func TestHandleToday_questCardClickable(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -744,7 +756,7 @@ func TestHandleAllQuests_questCardClickable(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleAllQuests(stub, tmpl)
+	h := handleAllQuests(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/quests", nil)
 	w := httptest.NewRecorder()
@@ -769,7 +781,7 @@ func TestHandleToday_descriptionIcon(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -797,7 +809,7 @@ func TestHandleToday_noDescriptionIcon(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -878,7 +890,7 @@ func TestHandleQuestLog_failedQuestRetryLink(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleQuestLog(stub, tmpl)
+	h := handleQuestLog(stub, &stubTxRunner{q: stub}, tmpl)
 
 	req := httptest.NewRequest("GET", "/log", nil)
 	w := httptest.NewRecorder()
@@ -1109,13 +1121,13 @@ func TestHandleRetryQuest_postInvalidDate(t *testing.T) {
 func TestHandleViewQuest_completed(t *testing.T) {
 	stub := &stubQuerier{
 		quest: sqlc.QuestsQuest{
-			ID:          1,
-			Title:       "Done Quest",
-			QuestType:   "main",
-			Status:      "completed",
-			Description: pgtype.Text{String: "A description", Valid: true},
-			QuestGiver:  pgtype.Text{String: "The King", Valid: true},
-			QuestDate:   pgtype.Date{Time: time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC), Valid: true},
+			ID:           1,
+			Title:        "Done Quest",
+			QuestType:    "main",
+			Status:       "completed",
+			Description:  pgtype.Text{String: "A description", Valid: true},
+			QuestGiver:   pgtype.Text{String: "The King", Valid: true},
+			QuestDate:    pgtype.Date{Time: time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC), Valid: true},
 			QuestLineID:  pgtype.Int8{Int64: 1, Valid: true},
 			ReminderTime: pgtype.Time{Microseconds: 9*3600_000_000 + 30*60_000_000, Valid: true},
 			CompletedAt:  pgtype.Timestamptz{Time: time.Date(2026, 3, 10, 14, 30, 0, 0, time.UTC), Valid: true},

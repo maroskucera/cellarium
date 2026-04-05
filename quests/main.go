@@ -41,6 +41,23 @@ import (
 	"github.com/maroskucera/cellarium/quests/db/sqlc"
 )
 
+// pgxTxRunner implements txRunner using a pgxpool.Pool.
+type pgxTxRunner struct {
+	pool *pgxpool.Pool
+}
+
+func (r *pgxTxRunner) RunInTx(ctx context.Context, fn func(sqlc.Querier) error) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err := fn(sqlc.New(tx)); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 //go:embed static/*
 var staticFS embed.FS
 
@@ -176,6 +193,7 @@ func main() {
 	defer pool.Close()
 
 	queries := sqlc.New(pool)
+	txr := &pgxTxRunner{pool: pool}
 
 	tmpl, err := template.ParseFS(templatesFS, "templates/*.html")
 	if err != nil {
@@ -185,7 +203,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Today
-	mux.Handle("GET /{$}", handleToday(queries, tmpl))
+	mux.Handle("GET /{$}", handleToday(queries, txr, tmpl))
 
 	// Quest CRUD
 	mux.Handle("GET /quests/new", handleNewQuest(queries, tmpl))
@@ -201,10 +219,10 @@ func main() {
 	mux.Handle("POST /quests/reorder", handleReorderQuest(queries))
 
 	// All quests
-	mux.Handle("GET /quests", handleAllQuests(queries, tmpl))
+	mux.Handle("GET /quests", handleAllQuests(queries, txr, tmpl))
 
 	// Quest log
-	mux.Handle("GET /log", handleQuestLog(queries, tmpl))
+	mux.Handle("GET /log", handleQuestLog(queries, txr, tmpl))
 
 	// Quest lines
 	mux.Handle("GET /quest-lines", handleQuestLines(queries, tmpl))
@@ -258,7 +276,7 @@ func main() {
 		VAPIDPublicKey:  vapidPubKey,
 		VAPIDSubject:    vapidSubject,
 	}
-	go startTicker(ctx, queries, cfg)
+	go startTicker(ctx, queries, txr, cfg)
 
 	srv := &http.Server{
 		Addr:    listenAddr,

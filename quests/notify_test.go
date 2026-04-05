@@ -27,7 +27,7 @@ func TestRunTickerTasks_callsEnsureFailedQuests(t *testing.T) {
 	stub := &stubQuerier{}
 	cfg := notifyConfig{}
 	now := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	runTickerTasks(nil, stub, cfg, now) //nolint:staticcheck
+	runTickerTasks(nil, stub, &stubTxRunner{q: stub}, cfg, now) //nolint:staticcheck
 	if stub.failOverdueQuestsCall == nil {
 		t.Fatal("expected FailOverdueQuests to be called")
 	}
@@ -41,7 +41,7 @@ func TestRunTickerTasks_noVAPIDKey_skipsPush(t *testing.T) {
 	}
 	cfg := notifyConfig{} // no VAPID key
 	now := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	runTickerTasks(nil, stub, cfg, now) //nolint:staticcheck
+	runTickerTasks(nil, stub, &stubTxRunner{q: stub}, cfg, now) //nolint:staticcheck
 	if stub.listDueRemindersCalled {
 		t.Error("expected ListDueReminders not to be called when no VAPID key")
 	}
@@ -62,7 +62,7 @@ func TestRunTickerTasks_marksReminderSent(t *testing.T) {
 		VAPIDSubject:    "mailto:test@example.com",
 	}
 	now := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
-	runTickerTasks(nil, stub, cfg, now) //nolint:staticcheck
+	runTickerTasks(nil, stub, &stubTxRunner{q: stub}, cfg, now) //nolint:staticcheck
 	if !stub.markReminderSentCalled {
 		t.Fatal("expected MarkReminderSent to be called")
 	}

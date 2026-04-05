@@ -9,6 +9,7 @@
 /receipt-tracker/receipt-tracker
 /loan-tracker/loan-tracker
 /pockets/pockets
+/quests/quests
 
 # Local environment overrides (may contain secrets)
 .env.local

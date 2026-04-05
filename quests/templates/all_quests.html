@@ -1,0 +1,94 @@
+<!--
+Cellarium Quests — all active quests page
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "all_quests"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quests — All</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+    {{template "_nav" .Nav}}
+    <header>
+        <h1>All Quests</h1>
+        <p><a href="/quests/new" class="btn btn-secondary">+ New Quest</a></p>
+    </header>
+
+    {{range .Types}}
+    <section class="quest-type-group">
+        <h2 class="quest-type-name">{{.TypeName}}</h2>
+
+        {{range .Lines}}
+        <section class="quest-line-group">
+            <h3 class="quest-line-name">{{.Name}}</h3>
+            <ul class="quest-list" aria-label="{{.Name}}">
+            {{range .Quests}}
+                <li class="quest-card" data-quest-id="{{.ID}}">
+                    <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
+                    <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                        <div class="quest-card-body">
+                            <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                            <p class="quest-meta">
+                                {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
+                                {{if .QuestGiver}}{{if .QuestDate}} · {{end}}👤 {{.QuestGiver}}{{end}}
+                                {{if .Recurring}}{{if or .QuestDate .QuestGiver}} · {{end}}🔁{{end}}
+                            </p>
+                        </div>
+                    </a>
+                </li>
+            {{end}}
+            </ul>
+        </section>
+        {{end}}
+
+        {{if .Ungrouped}}
+        <ul class="quest-list" aria-label="{{.TypeName}} ungrouped quests">
+        {{range .Ungrouped}}
+            <li class="quest-card" data-quest-id="{{.ID}}">
+                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
+                <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                    <div class="quest-card-body">
+                        <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                        <p class="quest-meta">
+                            {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
+                            {{if .QuestGiver}}{{if .QuestDate}} · {{end}}👤 {{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if or .QuestDate .QuestGiver}} · {{end}}🔁{{end}}
+                        </p>
+                    </div>
+                </a>
+            </li>
+        {{end}}
+        </ul>
+        {{end}}
+    </section>
+    {{end}}
+
+    {{if eq (len .Types) 0}}
+    <div class="empty-state">
+        <p>No active quests.</p>
+        <p><a href="/quests/new" class="btn">Add a quest</a></p>
+    </div>
+    {{end}}
+</main>
+<script src="/static/completion.js"></script>
+<script src="/static/reorder.js"></script>
+</body>
+</html>
+{{end}}

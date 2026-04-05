@@ -1,0 +1,61 @@
+<!--
+Cellarium Quests — quest log page (completed + failed)
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "quest_log"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quests — Log</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+    {{template "_nav" .Nav}}
+    <h1>Quest Log</h1>
+
+    {{if .Days}}
+    {{range .Days}}
+    <section class="log-day">
+        <h2 class="log-day-header">{{.Date}}</h2>
+        <ul class="quest-list" style="list-style:none;padding:0;margin:0">
+        {{range .Quests}}
+            <li class="quest-card {{if eq .Status "completed"}}status-completed{{else}}status-failed{{end}}" data-quest-id="{{.ID}}">
+                <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                    <div class="quest-card-body">
+                        <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                        <p class="quest-meta">
+                            {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
+                            {{if .QuestGiver}}{{if .QuestDate}} · {{end}}👤 {{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if or .QuestDate .QuestGiver}} · {{end}}🔁{{end}}
+                        </p>
+                    </div>
+                </a>
+            </li>
+        {{end}}
+        </ul>
+    </section>
+    {{end}}
+    {{else}}
+    <div class="empty-state">
+        <p>No completed or failed quests yet.</p>
+    </div>
+    {{end}}
+</main>
+</body>
+</html>
+{{end}}

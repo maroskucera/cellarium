@@ -1,0 +1,123 @@
+<!--
+Cellarium Quests — today page
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "today"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quests — Today</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="manifest" href="/manifest.json">
+</head>
+<body>
+<main>
+    {{template "_nav" .Nav}}
+    <header>
+        <h1>{{.Date}}</h1>
+        <p><a href="/quests/new" class="btn btn-secondary">+ New Quest</a>
+        <button id="push-toggle" class="btn btn-secondary" style="margin-left:0.5rem">Enable Notifications</button></p>
+    </header>
+
+    {{if .MainQuests}}
+    <section>
+        <h2>Main</h2>
+        <ul class="quest-list" aria-label="Main">
+        {{range .MainQuests}}
+            <li class="quest-card" data-quest-id="{{.ID}}">
+                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
+                <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                    <div class="quest-card-body">
+                        <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                        {{if or .QuestLineName .QuestGiver .Recurring}}
+                        <p class="quest-meta">
+                            {{if .QuestLineName}}🧵 {{.QuestLineName}}{{end}}
+                            {{if .QuestGiver}}{{if .QuestLineName}} · {{end}}👤 {{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if or .QuestLineName .QuestGiver}} · {{end}}🔁{{end}}
+                        </p>
+                        {{end}}
+                    </div>
+                </a>
+            </li>
+        {{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    {{if .SideQuests}}
+    <section>
+        <h2>Side</h2>
+        <ul class="quest-list" aria-label="Side">
+        {{range .SideQuests}}
+            <li class="quest-card" data-quest-id="{{.ID}}">
+                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
+                <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                    <div class="quest-card-body">
+                        <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                        {{if or .QuestLineName .QuestGiver .Recurring}}
+                        <p class="quest-meta">
+                            {{if .QuestLineName}}🧵 {{.QuestLineName}}{{end}}
+                            {{if .QuestGiver}}{{if .QuestLineName}} · {{end}}👤 {{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if or .QuestLineName .QuestGiver}} · {{end}}🔁{{end}}
+                        </p>
+                        {{end}}
+                    </div>
+                </a>
+            </li>
+        {{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    {{if .DailyQuests}}
+    <section>
+        <h2>Daily</h2>
+        <ul class="quest-list" aria-label="Daily">
+        {{range .DailyQuests}}
+            <li class="quest-card" data-quest-id="{{.ID}}">
+                <input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}">
+                <a href="/quests/{{.ID}}/edit" class="quest-card-link">
+                    <div class="quest-card-body">
+                        <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                        {{if or .QuestLineName .QuestGiver .Recurring}}
+                        <p class="quest-meta">
+                            {{if .QuestLineName}}🧵 {{.QuestLineName}}{{end}}
+                            {{if .QuestGiver}}{{if .QuestLineName}} · {{end}}👤 {{.QuestGiver}}{{end}}
+                            {{if .Recurring}}{{if or .QuestLineName .QuestGiver}} · {{end}}🔁{{end}}
+                        </p>
+                        {{end}}
+                    </div>
+                </a>
+            </li>
+        {{end}}
+        </ul>
+    </section>
+    {{end}}
+
+    {{if and (eq (len .MainQuests) 0) (eq (len .SideQuests) 0) (eq (len .DailyQuests) 0)}}
+    <div class="empty-state">
+        <p>No quests for today.</p>
+        <p><a href="/quests/new" class="btn">Add a quest</a></p>
+    </div>
+    {{end}}
+</main>
+<script src="/static/completion.js"></script>
+<script src="/static/reorder.js"></script>
+<script src="/static/push.js"></script>
+</body>
+</html>
+{{end}}

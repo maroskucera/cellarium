@@ -43,14 +43,15 @@ func fixedTime() time.Time {
 
 // stubQuerier implements sqlc.Querier for testing.
 type stubQuerier struct {
-	quests     []sqlc.QuestsQuest
-	quest      sqlc.QuestsQuest
-	questLines []sqlc.ListQuestLinesRow
-	questLine  sqlc.GetQuestLineRow
-	pushSubs   []sqlc.QuestsPushSubscription
-	givers     []pgtype.Text
-	createdID  int64
-	err        error
+	quests       []sqlc.QuestsQuest
+	quest        sqlc.QuestsQuest
+	questLines   []sqlc.ListQuestLinesRow
+	questLine    sqlc.GetQuestLineRow
+	questsByLine []sqlc.QuestsQuest
+	pushSubs     []sqlc.QuestsPushSubscription
+	givers       []pgtype.Text
+	createdID    int64
+	err          error
 
 	failedQuests                     []sqlc.QuestsQuest
 	failOverdueQuestsCall            *time.Time
@@ -133,6 +134,10 @@ func (s *stubQuerier) ListActiveAndCompletedQuests(_ context.Context) ([]sqlc.Qu
 func (s *stubQuerier) ListActiveQuests(_ context.Context) ([]sqlc.QuestsQuest, error) {
 	s.listActiveCalled = true
 	return s.quests, s.err
+}
+
+func (s *stubQuerier) ListQuestsByLine(_ context.Context, _ pgtype.Int8) ([]sqlc.QuestsQuest, error) {
+	return s.questsByLine, s.err
 }
 
 func (s *stubQuerier) UncompleteQuest(_ context.Context, _ int64) error {
@@ -223,6 +228,7 @@ const testTemplates = `
 {{define "quest_lines"}}<html><body>quest-lines count={{len .QuestLines}}</body></html>{{end}}
 {{define "quest_line_new"}}<html><body>quest-line-new</body></html>{{end}}
 {{define "quest_line_edit"}}<html><body>quest-line-edit</body></html>{{end}}
+{{define "quest_line_detail"}}<html><body>quest-line-detail name={{.Line.Name}} count={{len .Quests}}{{range .Quests}} [{{.Title}}:{{.Status}}]{{end}}</body></html>{{end}}
 `
 
 func mustParseTestTemplates(t *testing.T) *template.Template {
@@ -1418,5 +1424,97 @@ func TestHandleViewQuest_recurrence(t *testing.T) {
 	body := w.Body.String()
 	if !strings.Contains(body, "recurrence=every") {
 		t.Errorf("expected 'recurrence=every' in body, got: %s", body)
+	}
+}
+
+func TestHandleQuestLineDetail(t *testing.T) {
+	stub := &stubQuerier{
+		questLine: sqlc.GetQuestLineRow{
+			ID:   1,
+			Name: "Main Story",
+		},
+		questsByLine: []sqlc.QuestsQuest{
+			{ID: 10, Title: "Completed Quest", Status: "completed"},
+			{ID: 11, Title: "Failed Quest", Status: "failed"},
+			{ID: 12, Title: "Active Dated", Status: "active"},
+			{ID: 13, Title: "Active Undated", Status: "active"},
+		},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleQuestLineDetail(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quest-lines/1", nil)
+	req.SetPathValue("id", "1")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "name=Main Story") {
+		t.Errorf("expected quest line name in body, got: %s", body)
+	}
+	if !strings.Contains(body, "count=4") {
+		t.Errorf("expected count=4 in body, got: %s", body)
+	}
+	if !strings.Contains(body, "[Completed Quest:completed]") {
+		t.Errorf("expected completed quest in body, got: %s", body)
+	}
+	if !strings.Contains(body, "[Failed Quest:failed]") {
+		t.Errorf("expected failed quest in body, got: %s", body)
+	}
+	if !strings.Contains(body, "[Active Dated:active]") {
+		t.Errorf("expected active dated quest in body, got: %s", body)
+	}
+}
+
+func TestHandleQuestLineDetail_invalidID(t *testing.T) {
+	stub := &stubQuerier{}
+	tmpl := mustParseTestTemplates(t)
+	h := handleQuestLineDetail(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quest-lines/abc", nil)
+	req.SetPathValue("id", "abc")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestHandleQuestLineDetail_notFound(t *testing.T) {
+	stub := &stubQuerier{err: errors.New("not found")}
+	tmpl := mustParseTestTemplates(t)
+	h := handleQuestLineDetail(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quest-lines/999", nil)
+	req.SetPathValue("id", "999")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestHandleQuestLineDetail_empty(t *testing.T) {
+	stub := &stubQuerier{
+		questLine: sqlc.GetQuestLineRow{ID: 2, Name: "Empty Line"},
+	}
+	tmpl := mustParseTestTemplates(t)
+	h := handleQuestLineDetail(stub, tmpl)
+
+	req := httptest.NewRequest("GET", "/quest-lines/2", nil)
+	req.SetPathValue("id", "2")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "count=0") {
+		t.Errorf("expected count=0 in body, got: %s", w.Body.String())
 	}
 }

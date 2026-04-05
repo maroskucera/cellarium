@@ -1,0 +1,64 @@
+<!--
+Cellarium Quests — quest line detail page
+Copyright (C) 2026 Maroš Kučera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+{{define "quest_line_detail"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quests — {{.Line.Name}}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+    {{template "_nav" .Nav}}
+    <header>
+        <h1>{{.Line.Name}}</h1>
+        {{if .Line.Description.Valid}}<p style="color:var(--text-muted)">{{.Line.Description.String}}</p>{{end}}
+        <p style="display:flex;gap:0.5rem">
+            <a href="/quest-lines" class="btn btn-secondary">Back</a>
+            <a href="/quest-lines/{{.Line.ID}}/edit" class="btn btn-secondary">Edit</a>
+        </p>
+    </header>
+
+    {{if .Quests}}
+    <ul class="quest-list" style="list-style:none;padding:0;margin:0">
+    {{range .Quests}}
+        <li class="quest-card{{if eq .Status "completed"}} status-completed{{end}}{{if eq .Status "failed"}} status-failed{{end}}" data-quest-id="{{.ID}}">
+            <a href="/quests/{{.ID}}" class="quest-card-link">
+                <div class="quest-card-body">
+                    <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
+                    <p class="quest-meta">
+                        {{if .QuestDate}}📅 {{.QuestDate}}{{end}}
+                        {{if .QuestGiver}}{{if .QuestDate}} · {{end}}👤 {{.QuestGiver}}{{end}}
+                        {{if .Recurring}}{{if or .QuestDate .QuestGiver}} · {{end}}🔁{{end}}
+                    </p>
+                </div>
+            </a>
+            {{if eq .Status "failed"}}<a href="/quests/{{.ID}}/retry" class="btn quest-retry-btn" aria-label="Retry quest">↻</a>{{end}}
+        </li>
+    {{end}}
+    </ul>
+    {{else}}
+    <div class="empty-state">
+        <p>No quests in this quest line yet.</p>
+    </div>
+    {{end}}
+</main>
+</body>
+</html>
+{{end}}

@@ -39,6 +39,44 @@ type questLineFormData struct {
 	Errors map[string]string
 }
 
+type questLineDetailData struct {
+	Nav    string
+	Line   sqlc.GetQuestLineRow
+	Quests []questDisplay
+}
+
+func handleQuestLineDetail(q sqlc.Querier, tmpl *template.Template) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		ctx := r.Context()
+		line, err := q.GetQuestLine(ctx, id)
+		if err != nil {
+			http.Error(w, "quest line not found", http.StatusNotFound)
+			return
+		}
+		quests, err := q.ListQuestsByLine(ctx, pgtype.Int8{Int64: id, Valid: true})
+		if err != nil {
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		displays := make([]questDisplay, len(quests))
+		for i, quest := range quests {
+			displays[i] = toQuestDisplay(quest)
+		}
+		data := questLineDetailData{
+			Nav:    "quest-lines",
+			Line:   line,
+			Quests: displays,
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		renderTemplate(w, tmpl, "quest_line_detail", data)
+	})
+}
+
 func handleQuestLines(q sqlc.Querier, tmpl *template.Template) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lines, err := q.ListQuestLines(r.Context())

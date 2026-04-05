@@ -36,7 +36,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     {{range .QuestLines}}
         <li data-quest-line-id="{{.ID}}" style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;border:1px solid var(--border);background:var(--card-bg);cursor:grab">
             <div style="flex:1">
-                <strong>{{.Name}}</strong>
+                <strong><a href="/quest-lines/{{.ID}}" style="color:inherit;text-decoration:none">{{.Name}}</a></strong>
                 {{if .Description.Valid}}<p style="margin:0.25rem 0 0;font-size:0.875rem;color:var(--text-muted)">{{.Description.String}}</p>{{end}}
             </div>
             <div class="quest-actions">

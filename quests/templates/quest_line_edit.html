@@ -53,6 +53,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <p style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem">
             <a href="/quest-lines" class="btn btn-secondary">Cancel</a>
             {{if .Line}}
+            <a href="/quest-lines/{{.Line.ID}}" class="btn btn-secondary">View Quests</a>
             <form method="post" action="/quest-lines/{{.Line.ID}}/delete" style="display:inline">
                 <button type="submit" class="btn-danger-sm" onclick="return confirm('Delete this quest line?')">Delete</button>
             </form>

@@ -390,6 +390,60 @@ func (q *Queries) ListQuestLog(ctx context.Context) ([]QuestsQuest, error) {
 	return items, nil
 }
 
+const listQuestsByLine = `-- name: ListQuestsByLine :many
+SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver,
+       reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at,
+       recurrence_type, recurrence_n, recurrence_unit, created_at,
+       recurrence_end_date, recurrence_instance, recurrence_max_instances
+FROM quests.quests WHERE quest_line_id = $1
+ORDER BY
+  CASE status WHEN 'completed' THEN 0 WHEN 'failed' THEN 1 WHEN 'active' THEN 2 END ASC,
+  CASE status WHEN 'completed' THEN completed_at WHEN 'failed' THEN failed_at ELSE NULL END ASC NULLS LAST,
+  quest_date ASC NULLS LAST,
+  id ASC
+`
+
+func (q *Queries) ListQuestsByLine(ctx context.Context, questLineID pgtype.Int8) ([]QuestsQuest, error) {
+	rows, err := q.db.Query(ctx, listQuestsByLine, questLineID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuestsQuest
+	for rows.Next() {
+		var i QuestsQuest
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.QuestType,
+			&i.QuestDate,
+			&i.QuestLineID,
+			&i.QuestGiver,
+			&i.ReminderTime,
+			&i.ReminderSentAt,
+			&i.SortOrder,
+			&i.Status,
+			&i.CompletedAt,
+			&i.FailedAt,
+			&i.RecurrenceType,
+			&i.RecurrenceN,
+			&i.RecurrenceUnit,
+			&i.CreatedAt,
+			&i.RecurrenceEndDate,
+			&i.RecurrenceInstance,
+			&i.RecurrenceMaxInstances,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTodayQuests = `-- name: ListTodayQuests :many
 SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at, recurrence_end_date, recurrence_instance, recurrence_max_instances
 FROM quests.quests WHERE status = 'active' AND quest_date = $1 ORDER BY quest_type ASC, sort_order ASC, id ASC

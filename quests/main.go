@@ -225,6 +225,7 @@ func main() {
 	mux.Handle("GET /log", handleQuestLog(queries, txr, tmpl))
 
 	// Quest lines
+	mux.Handle("GET /quest-lines/{id}", handleQuestLineDetail(queries, tmpl))
 	mux.Handle("GET /quest-lines", handleQuestLines(queries, tmpl))
 	mux.Handle("GET /quest-lines/new", handleNewQuestLine(queries, tmpl))
 	mux.Handle("POST /quest-lines/new", handleNewQuestLine(queries, tmpl))

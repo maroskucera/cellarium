@@ -75,3 +75,15 @@ FROM quests.quests WHERE status IN ('active', 'completed') ORDER BY quest_type A
 
 -- name: UpdateQuestTypeByLine :exec
 UPDATE quests.quests SET quest_type = @quest_type WHERE quest_line_id = @quest_line_id;
+
+-- name: ListQuestsByLine :many
+SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver,
+       reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at,
+       recurrence_type, recurrence_n, recurrence_unit, created_at,
+       recurrence_end_date, recurrence_instance, recurrence_max_instances
+FROM quests.quests WHERE quest_line_id = @quest_line_id
+ORDER BY
+  CASE status WHEN 'completed' THEN 0 WHEN 'failed' THEN 1 WHEN 'active' THEN 2 END ASC,
+  CASE status WHEN 'completed' THEN completed_at WHEN 'failed' THEN failed_at ELSE NULL END ASC NULLS LAST,
+  quest_date ASC NULLS LAST,
+  id ASC;

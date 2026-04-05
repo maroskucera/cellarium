@@ -74,6 +74,7 @@ type Querier interface {
 	ListQuestGivers(ctx context.Context) ([]pgtype.Text, error)
 	ListQuestLines(ctx context.Context) ([]ListQuestLinesRow, error)
 	ListQuestLog(ctx context.Context) ([]QuestsQuest, error)
+	ListQuestsByLine(ctx context.Context, questLineID pgtype.Int8) ([]QuestsQuest, error)
 	ListTodayQuests(ctx context.Context, questDate pgtype.Date) ([]QuestsQuest, error)
 	MarkReminderSent(ctx context.Context, arg MarkReminderSentParams) error
 	UncompleteQuest(ctx context.Context, id int64) error

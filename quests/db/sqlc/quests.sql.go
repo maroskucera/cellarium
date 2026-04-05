@@ -271,7 +271,7 @@ func (q *Queries) ListActiveQuests(ctx context.Context) ([]QuestsQuest, error) {
 
 const listDueReminders = `-- name: ListDueReminders :many
 SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_giver, reminder_time, reminder_sent_at, sort_order, status, completed_at, failed_at, recurrence_type, recurrence_n, recurrence_unit, created_at, recurrence_end_date, recurrence_instance, recurrence_max_instances
-FROM quests.quests WHERE status = 'active' AND reminder_time IS NOT NULL AND reminder_time <= $1 AND (reminder_sent_at IS NULL OR reminder_sent_at < $2)
+FROM quests.quests WHERE status = 'active' AND reminder_time IS NOT NULL AND reminder_time <= $1 AND (quest_date IS NULL OR quest_date = $2) AND (reminder_sent_at IS NULL OR reminder_sent_at < $2)
 `
 
 type ListDueRemindersParams struct {

@@ -37,10 +37,15 @@ type pushResult struct {
 // webpushSend is the function used to send push notifications. Override in tests.
 var webpushSend = webpush.SendNotification
 
+// defaultPushTTL is the default time-to-live (in seconds) for web push messages.
+// The push service holds the message for this long if the device is unreachable.
+const defaultPushTTL = 86400
+
 type notifyConfig struct {
 	VAPIDPrivateKey string
 	VAPIDPublicKey  string
 	VAPIDSubject    string
+	TTL             int // push message TTL in seconds; 0 = defaultPushTTL
 }
 
 // startTicker runs the background goroutine that checks reminders and failures.
@@ -89,11 +94,15 @@ func runTickerTasks(ctx context.Context, q sqlc.Querier, tx txRunner, cfg notify
 			"title": quest.Title,
 			"body":  "Quest reminder",
 		})
+		delivered := false
 		for _, sub := range subs {
 			if gone[sub.Endpoint] {
 				continue
 			}
 			result := sendPush(sub, string(payload), cfg)
+			if result.StatusCode >= http.StatusOK && result.StatusCode < http.StatusMultipleChoices {
+				delivered = true
+			}
 			if result.StatusCode == http.StatusGone {
 				if err := q.DeletePushSubscription(ctx, sub.Endpoint); err != nil {
 					log.Printf("DeletePushSubscription error for %s: %v", sub.Endpoint, err)
@@ -101,16 +110,22 @@ func runTickerTasks(ctx context.Context, q sqlc.Querier, tx txRunner, cfg notify
 				gone[sub.Endpoint] = true
 			}
 		}
-		if err := q.MarkReminderSent(ctx, sqlc.MarkReminderSentParams{
-			Today: today,
-			ID:    quest.ID,
-		}); err != nil {
-			log.Printf("MarkReminderSent error: %v", err)
+		if delivered {
+			if err := q.MarkReminderSent(ctx, sqlc.MarkReminderSentParams{
+				Today: today,
+				ID:    quest.ID,
+			}); err != nil {
+				log.Printf("MarkReminderSent error: %v", err)
+			}
 		}
 	}
 }
 
 func sendPush(sub sqlc.QuestsPushSubscription, payload string, cfg notifyConfig) pushResult {
+	ttl := cfg.TTL
+	if ttl == 0 {
+		ttl = defaultPushTTL
+	}
 	resp, err := webpushSend([]byte(payload), &webpush.Subscription{
 		Endpoint: sub.Endpoint,
 		Keys: webpush.Keys{
@@ -121,7 +136,7 @@ func sendPush(sub sqlc.QuestsPushSubscription, payload string, cfg notifyConfig)
 		VAPIDPrivateKey: cfg.VAPIDPrivateKey,
 		VAPIDPublicKey:  cfg.VAPIDPublicKey,
 		Subscriber:      cfg.VAPIDSubject,
-		TTL:             30,
+		TTL:             ttl,
 	})
 	if err != nil {
 		log.Printf("sendPush error for %s: %v", sub.Endpoint, err)

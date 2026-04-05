@@ -22,9 +22,20 @@ import (
 	"log"
 	"time"
 
+	"net/http"
+
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/maroskucera/cellarium/quests/db/sqlc"
 )
+
+type pushResult struct {
+	Endpoint   string `json:"endpoint"`
+	StatusCode int    `json:"status_code"`
+	Error      string `json:"error,omitempty"`
+}
+
+// webpushSend is the function used to send push notifications. Override in tests.
+var webpushSend = webpush.SendNotification
 
 type notifyConfig struct {
 	VAPIDPrivateKey string
@@ -72,13 +83,23 @@ func runTickerTasks(ctx context.Context, q sqlc.Querier, tx txRunner, cfg notify
 		log.Printf("ListPushSubscriptions error: %v", err)
 		return
 	}
+	gone := map[string]bool{}
 	for _, quest := range dueQuests {
 		payload, _ := json.Marshal(map[string]string{
 			"title": quest.Title,
 			"body":  "Quest reminder",
 		})
 		for _, sub := range subs {
-			sendPush(sub, string(payload), cfg)
+			if gone[sub.Endpoint] {
+				continue
+			}
+			result := sendPush(sub, string(payload), cfg)
+			if result.StatusCode == http.StatusGone {
+				if err := q.DeletePushSubscription(ctx, sub.Endpoint); err != nil {
+					log.Printf("DeletePushSubscription error for %s: %v", sub.Endpoint, err)
+				}
+				gone[sub.Endpoint] = true
+			}
 		}
 		if err := q.MarkReminderSent(ctx, sqlc.MarkReminderSentParams{
 			Today: today,
@@ -89,8 +110,8 @@ func runTickerTasks(ctx context.Context, q sqlc.Querier, tx txRunner, cfg notify
 	}
 }
 
-func sendPush(sub sqlc.QuestsPushSubscription, payload string, cfg notifyConfig) {
-	_, err := webpush.SendNotification([]byte(payload), &webpush.Subscription{
+func sendPush(sub sqlc.QuestsPushSubscription, payload string, cfg notifyConfig) pushResult {
+	resp, err := webpushSend([]byte(payload), &webpush.Subscription{
 		Endpoint: sub.Endpoint,
 		Keys: webpush.Keys{
 			Auth:   sub.Auth,
@@ -103,6 +124,12 @@ func sendPush(sub sqlc.QuestsPushSubscription, payload string, cfg notifyConfig)
 		TTL:             30,
 	})
 	if err != nil {
-		log.Printf("sendPush error: %v", err)
+		log.Printf("sendPush error for %s: %v", sub.Endpoint, err)
+		return pushResult{Endpoint: sub.Endpoint, Error: err.Error()}
 	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		log.Printf("sendPush: %s returned HTTP %d", sub.Endpoint, resp.StatusCode)
+	}
+	return pushResult{Endpoint: sub.Endpoint, StatusCode: resp.StatusCode}
 }

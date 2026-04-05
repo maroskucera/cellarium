@@ -182,6 +182,16 @@ func main() {
 	vapidPrivKey := os.Getenv("VAPID_PRIVATE_KEY")
 	vapidPubKey := os.Getenv("VAPID_PUBLIC_KEY")
 	vapidSubject := os.Getenv("VAPID_SUBJECT")
+	pushTestEnabled := os.Getenv("PUSH_TEST") == "1"
+
+	cfg := notifyConfig{
+		VAPIDPrivateKey: vapidPrivKey,
+		VAPIDPublicKey:  vapidPubKey,
+		VAPIDSubject:    vapidSubject,
+	}
+	if cfg.VAPIDPrivateKey == "" {
+		log.Println("VAPID keys not configured, push notifications disabled")
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -203,7 +213,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Today
-	mux.Handle("GET /{$}", handleToday(queries, txr, tmpl))
+	mux.Handle("GET /{$}", handleToday(queries, txr, tmpl, pushTestEnabled))
 
 	// Quest CRUD
 	mux.Handle("GET /quests/new", handleNewQuest(queries, tmpl))
@@ -241,6 +251,9 @@ func main() {
 	mux.Handle("POST /api/push/subscribe", handlePushSubscribe(queries))
 	mux.Handle("POST /api/push/unsubscribe", handlePushUnsubscribe(queries))
 	mux.Handle("GET /api/push/vapid-public-key", handlePushVapidKey(vapidPubKey))
+	if pushTestEnabled {
+		mux.Handle("POST /api/push/test", handlePushTest(queries, cfg))
+	}
 
 	// Serve service worker and manifest at root scope (required for full PWA)
 	mux.Handle("GET /service-worker.js", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -272,11 +285,6 @@ func main() {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(staticSub)))
 
 	// Start background ticker for reminders + overdue failure detection
-	cfg := notifyConfig{
-		VAPIDPrivateKey: vapidPrivKey,
-		VAPIDPublicKey:  vapidPubKey,
-		VAPIDSubject:    vapidSubject,
-	}
 	go startTicker(ctx, queries, txr, cfg)
 
 	srv := &http.Server{

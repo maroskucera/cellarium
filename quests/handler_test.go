@@ -243,7 +243,7 @@ func mustParseTestTemplates(t *testing.T) *template.Template {
 func TestHandleToday_empty(t *testing.T) {
 	stub := &stubQuerier{}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl, false)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -270,7 +270,7 @@ func TestHandleToday_withQuests(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl, false)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -800,7 +800,7 @@ func TestHandleToday_noQuestDateInOutput(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl, false)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -857,7 +857,7 @@ func TestHandleToday_questCardClickable(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl, false)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -917,7 +917,7 @@ func TestHandleToday_descriptionIcon(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl, false)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -945,7 +945,7 @@ func TestHandleToday_noDescriptionIcon(t *testing.T) {
 		},
 	}
 	tmpl := mustParseTestTemplates(t)
-	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl)
+	h := handleToday(stub, &stubTxRunner{q: stub}, tmpl, false)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()

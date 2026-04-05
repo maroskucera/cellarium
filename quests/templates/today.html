@@ -30,7 +30,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     <header>
         <h1>{{.Date}}</h1>
         <p><a href="/quests/new" class="btn btn-secondary">+ New Quest</a>
-        <button id="push-toggle" class="btn btn-secondary" style="margin-left:0.5rem">Enable Notifications</button></p>
+        <button id="push-toggle" class="btn btn-secondary" style="margin-left:0.5rem">Enable Notifications</button>
+        {{if .PushTest}}<button id="push-test" class="btn btn-secondary" style="margin-left:0.5rem;display:none">Test Notification</button>{{end}}</p>
     </header>
 
     {{if .MainQuests}}

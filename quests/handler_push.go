@@ -79,6 +79,38 @@ func handlePushUnsubscribe(q sqlc.Querier) http.Handler {
 	})
 }
 
+func handlePushTest(q sqlc.Querier, cfg notifyConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if cfg.VAPIDPrivateKey == "" {
+			http.Error(w, "VAPID keys not configured", http.StatusServiceUnavailable)
+			return
+		}
+		subs, err := q.ListPushSubscriptions(r.Context())
+		if err != nil {
+			log.Printf("handlePushTest: ListPushSubscriptions error: %v", err)
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		if len(subs) == 0 {
+			http.Error(w, "no push subscriptions found", http.StatusNotFound)
+			return
+		}
+		payload, _ := json.Marshal(map[string]string{
+			"title": "Test Notification",
+			"body":  "Push notifications are working!",
+		})
+		var results []pushResult
+		for _, sub := range subs {
+			result := sendPush(sub, string(payload), cfg)
+			results = append(results, result)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(results); err != nil {
+			log.Printf("handlePushTest: failed to encode response: %v", err)
+		}
+	})
+}
+
 func handlePushVapidKey(vapidPublicKey string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")

@@ -18,10 +18,16 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	webpush "github.com/SherClockHolmes/webpush-go"
+	"github.com/maroskucera/cellarium/quests/db/sqlc"
 )
 
 func TestHandlePushSubscribe_Success(t *testing.T) {
@@ -137,5 +143,109 @@ func TestHandlePushVapidKey(t *testing.T) {
 	}
 	if w.Body.String() != "test-vapid-key" {
 		t.Errorf("expected 'test-vapid-key', got %q", w.Body.String())
+	}
+}
+
+func TestHandlePushTest_NoVAPID(t *testing.T) {
+	stub := &stubQuerier{}
+	h := handlePushTest(stub, notifyConfig{})
+
+	req := httptest.NewRequest("POST", "/api/push/test", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503, got %d", w.Code)
+	}
+}
+
+func TestHandlePushTest_NoSubscriptions(t *testing.T) {
+	stub := &stubQuerier{
+		pushSubs: []sqlc.QuestsPushSubscription{},
+	}
+	cfg := notifyConfig{
+		VAPIDPrivateKey: "fake-private-key",
+		VAPIDPublicKey:  "fake-public-key",
+		VAPIDSubject:    "mailto:test@example.com",
+	}
+	h := handlePushTest(stub, cfg)
+
+	req := httptest.NewRequest("POST", "/api/push/test", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestHandlePushTest_DBError(t *testing.T) {
+	stub := &stubQuerier{
+		err: errors.New("db error"),
+	}
+	cfg := notifyConfig{
+		VAPIDPrivateKey: "fake-private-key",
+		VAPIDPublicKey:  "fake-public-key",
+		VAPIDSubject:    "mailto:test@example.com",
+	}
+	h := handlePushTest(stub, cfg)
+
+	req := httptest.NewRequest("POST", "/api/push/test", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d", w.Code)
+	}
+}
+
+func TestHandlePushTest_Success(t *testing.T) {
+	orig := webpushSend
+	t.Cleanup(func() { webpushSend = orig })
+
+	webpushSend = func(message []byte, s *webpush.Subscription, options *webpush.Options) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 201,
+			Body:       io.NopCloser(strings.NewReader("")),
+		}, nil
+	}
+
+	stub := &stubQuerier{
+		pushSubs: []sqlc.QuestsPushSubscription{
+			{
+				ID:       1,
+				Endpoint: "https://example.com/push/test-endpoint",
+				P256dh:   "test-p256dh",
+				Auth:     "test-auth",
+			},
+		},
+	}
+	cfg := notifyConfig{
+		VAPIDPrivateKey: "fake-private-key",
+		VAPIDPublicKey:  "fake-public-key",
+		VAPIDSubject:    "mailto:test@example.com",
+	}
+	h := handlePushTest(stub, cfg)
+
+	req := httptest.NewRequest("POST", "/api/push/test", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+
+	var results []pushResult
+	if err := json.NewDecoder(w.Body).Decode(&results); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Endpoint != "https://example.com/push/test-endpoint" {
+		t.Errorf("expected endpoint %q, got %q", "https://example.com/push/test-endpoint", results[0].Endpoint)
+	}
+	if results[0].StatusCode != 201 {
+		t.Errorf("expected StatusCode 201, got %d", results[0].StatusCode)
 	}
 }

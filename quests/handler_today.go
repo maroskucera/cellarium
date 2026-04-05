@@ -30,6 +30,7 @@ type todayData struct {
 	MainQuests  []questDisplay
 	SideQuests  []questDisplay
 	DailyQuests []questDisplay
+	PushTest    bool
 }
 
 type questDisplay struct {
@@ -70,7 +71,7 @@ func toQuestDisplay(q sqlc.QuestsQuest) questDisplay {
 	return d
 }
 
-func handleToday(q sqlc.Querier, tx txRunner, tmpl *template.Template) http.Handler {
+func handleToday(q sqlc.Querier, tx txRunner, tmpl *template.Template, pushTest bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		now := timeNow()
@@ -99,9 +100,10 @@ func handleToday(q sqlc.Querier, tx txRunner, tmpl *template.Template) http.Hand
 		}
 
 		data := todayData{
-			Nav:     "today",
-			Date:    now.In(appLocation).Format("Monday, 2 January 2006"),
-			DateISO: now.In(appLocation).Format("2006-01-02"),
+			Nav:      "today",
+			Date:     now.In(appLocation).Format("Monday, 2 January 2006"),
+			DateISO:  now.In(appLocation).Format("2006-01-02"),
+			PushTest: pushTest,
 		}
 
 		for _, quest := range quests {

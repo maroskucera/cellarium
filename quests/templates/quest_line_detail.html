@@ -29,10 +29,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     <header>
         <h1>{{.Line.Name}}</h1>
         {{if .Line.Description.Valid}}<p style="color:var(--text-muted)">{{.Line.Description.String}}</p>{{end}}
-        <p style="display:flex;gap:0.5rem">
-            <a href="/quest-lines" class="btn btn-secondary">Back</a>
+        <div class="btn-row">
             <a href="/quest-lines/{{.Line.ID}}/edit" class="btn btn-secondary">Edit</a>
-        </p>
+            <a href="/quest-lines" class="btn btn-secondary">Back</a>
+        </div>
     </header>
 
     {{if .Quests}}

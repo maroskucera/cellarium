@@ -27,7 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 <main>
     {{template "_nav" .Nav}}
     <h1>Edit Quest</h1>
-    <form method="post" action="{{.Action}}">
+    <form id="edit-form" method="post" action="{{.Action}}">
         <fieldset>
             <legend>Quest Details</legend>
 
@@ -111,14 +111,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             </div>
         </fieldset>
 
-        <div class="btn-row">
-            <button type="submit">Save Changes</button>
-            <a href="/" class="btn btn-secondary">Cancel</a>
-        </div>
     </form>
-    <form method="post" action="/quests/{{.Quest.ID}}/delete" class="inline-form btn-row">
-        <button type="submit" class="btn-danger-sm" onclick="return confirm('Delete this quest?')">Delete</button>
-    </form>
+    <div class="btn-row">
+        <button type="submit" form="edit-form">Save Changes</button>
+        <form method="post" action="/quests/{{.Quest.ID}}/delete" class="inline-form">
+            <button type="submit" class="btn-danger-sm" onclick="return confirm('Delete this quest?')">Delete</button>
+        </form>
+        <a href="/" class="btn btn-secondary">Cancel</a>
+    </div>
 </main>
 <script src="/static/autocomplete.js"></script>
 <script>

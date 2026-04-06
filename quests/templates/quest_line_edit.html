@@ -27,7 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 <main>
     {{template "_nav" .Nav}}
     <h1>Edit Quest Line</h1>
-    <form method="post" action="{{.Action}}">
+    <form id="edit-form" method="post" action="{{.Action}}">
         <fieldset>
             <legend>Quest Line</legend>
             <label for="name">Name</label>
@@ -49,17 +49,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                 <option value="daily"{{if .Line}}{{if and .Line.QuestType.Valid (eq .Line.QuestType.String "daily")}} selected{{end}}{{end}}>Daily</option>
             </select>
         </fieldset>
-        <button type="submit">Save Changes</button>
-        <p style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem">
-            <a href="/quest-lines" class="btn btn-secondary">Cancel</a>
-            {{if .Line}}
-            <a href="/quest-lines/{{.Line.ID}}" class="btn btn-secondary">View Quests</a>
-            <form method="post" action="/quest-lines/{{.Line.ID}}/delete" style="display:inline">
-                <button type="submit" class="btn-danger-sm" onclick="return confirm('Delete this quest line?')">Delete</button>
-            </form>
-            {{end}}
-        </p>
     </form>
+    <div class="btn-row">
+        <button type="submit" form="edit-form">Save Changes</button>
+        {{if .Line}}
+        <a href="/quest-lines/{{.Line.ID}}" class="btn btn-secondary">View Quests</a>
+        <form method="post" action="/quest-lines/{{.Line.ID}}/delete" class="inline-form">
+            <button type="submit" class="btn-danger-sm" onclick="return confirm('Delete this quest line?')">Delete</button>
+        </form>
+        {{end}}
+        <a href="/quest-lines" class="btn btn-secondary">Cancel</a>
+    </div>
 </main>
 </body>
 </html>

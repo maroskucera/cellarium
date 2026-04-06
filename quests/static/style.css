@@ -281,7 +281,7 @@ select:focus {
 .quest-card-link:hover .quest-card-body { background: var(--progress-bg); }
 .quest-card-link:focus { outline: 3px solid var(--focus-outline); outline-offset: -3px; }
 
-textarea { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 0; background: var(--bg); color: var(--text); font-size: 1rem; font-family: inherit; min-height: 80px; resize: vertical; }
+textarea { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 0; background: var(--bg); color: var(--text); font-size: 1rem; font-family: inherit; min-height: 200px; resize: vertical; }
 textarea:focus { outline: 3px solid var(--focus-outline); outline-offset: 2px; }
 
 input[type="time"], input[type="number"] { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 0; background: var(--bg); color: var(--text); font-size: 1rem; font-family: inherit; min-height: 44px; -webkit-appearance: none; appearance: none; }

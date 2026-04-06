@@ -195,7 +195,13 @@ func handleNewQuest(q sqlc.Querier, tmpl *template.Template) http.Handler {
 			RecurrenceEndMode: "never",
 		}
 
-		lines, err := loadQuestLines(q, r, 0)
+		var preselectedLineID int64
+		if qlStr := r.URL.Query().Get("quest_line_id"); qlStr != "" {
+			if id, err := strconv.ParseInt(qlStr, 10, 64); err == nil {
+				preselectedLineID = id
+			}
+		}
+		lines, err := loadQuestLines(q, r, preselectedLineID)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return

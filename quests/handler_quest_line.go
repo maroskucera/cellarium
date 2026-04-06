@@ -28,7 +28,7 @@ import (
 
 type questLinesData struct {
 	Nav        string
-	QuestLines []sqlc.ListQuestLinesRow
+	QuestLines []sqlc.ListQuestLinesWithCountRow
 }
 
 type questLineFormData struct {
@@ -79,7 +79,7 @@ func handleQuestLineDetail(q sqlc.Querier, tmpl *template.Template) http.Handler
 
 func handleQuestLines(q sqlc.Querier, tmpl *template.Template) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lines, err := q.ListQuestLines(r.Context())
+		lines, err := q.ListQuestLinesWithCount(r.Context())
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return

@@ -170,6 +170,21 @@ func (s *stubQuerier) ListQuestLines(_ context.Context) ([]sqlc.ListQuestLinesRo
 	return s.questLines, s.err
 }
 
+func (s *stubQuerier) ListQuestLinesWithCount(_ context.Context) ([]sqlc.ListQuestLinesWithCountRow, error) {
+	var rows []sqlc.ListQuestLinesWithCountRow
+	for _, ql := range s.questLines {
+		rows = append(rows, sqlc.ListQuestLinesWithCountRow{
+			ID:          ql.ID,
+			Name:        ql.Name,
+			Description: ql.Description,
+			SortOrder:   ql.SortOrder,
+			QuestType:   ql.QuestType,
+			CreatedAt:   ql.CreatedAt,
+		})
+	}
+	return rows, s.err
+}
+
 func (s *stubQuerier) ListQuestLog(_ context.Context) ([]sqlc.QuestsQuest, error) {
 	return s.quests, s.err
 }

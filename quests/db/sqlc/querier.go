@@ -73,6 +73,7 @@ type Querier interface {
 	ListPushSubscriptions(ctx context.Context) ([]QuestsPushSubscription, error)
 	ListQuestGivers(ctx context.Context) ([]pgtype.Text, error)
 	ListQuestLines(ctx context.Context) ([]ListQuestLinesRow, error)
+	ListQuestLinesWithCount(ctx context.Context) ([]ListQuestLinesWithCountRow, error)
 	ListQuestLog(ctx context.Context) ([]QuestsQuest, error)
 	ListQuestsByLine(ctx context.Context, questLineID pgtype.Int8) ([]QuestsQuest, error)
 	ListTodayQuests(ctx context.Context, questDate pgtype.Date) ([]QuestsQuest, error)

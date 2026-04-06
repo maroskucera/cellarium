@@ -31,5 +31,11 @@ UPDATE quests.quest_lines SET name = @name, description = @description, sort_ord
 -- name: UpdateQuestLineSortOrder :exec
 UPDATE quests.quest_lines SET sort_order = @sort_order WHERE id = @id;
 
+-- name: ListQuestLinesWithCount :many
+SELECT ql.id, ql.name, ql.description, ql.sort_order, ql.quest_type, ql.created_at,
+       (SELECT count(*) FROM quests.quests q WHERE q.quest_line_id = ql.id AND q.status = 'active') AS active_quest_count
+FROM quests.quest_lines ql
+ORDER BY ql.sort_order ASC, ql.id ASC;
+
 -- name: DeleteQuestLine :exec
 DELETE FROM quests.quest_lines WHERE id = @id;

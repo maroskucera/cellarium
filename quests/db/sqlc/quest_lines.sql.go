@@ -128,6 +128,51 @@ func (q *Queries) ListQuestLines(ctx context.Context) ([]ListQuestLinesRow, erro
 	return items, nil
 }
 
+const listQuestLinesWithCount = `-- name: ListQuestLinesWithCount :many
+SELECT ql.id, ql.name, ql.description, ql.sort_order, ql.quest_type, ql.created_at,
+       (SELECT count(*) FROM quests.quests q WHERE q.quest_line_id = ql.id AND q.status = 'active') AS active_quest_count
+FROM quests.quest_lines ql
+ORDER BY ql.sort_order ASC, ql.id ASC
+`
+
+type ListQuestLinesWithCountRow struct {
+	ID               int64              `json:"id"`
+	Name             string             `json:"name"`
+	Description      pgtype.Text        `json:"description"`
+	SortOrder        int32              `json:"sort_order"`
+	QuestType        pgtype.Text        `json:"quest_type"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	ActiveQuestCount int64              `json:"active_quest_count"`
+}
+
+func (q *Queries) ListQuestLinesWithCount(ctx context.Context) ([]ListQuestLinesWithCountRow, error) {
+	rows, err := q.db.Query(ctx, listQuestLinesWithCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListQuestLinesWithCountRow
+	for rows.Next() {
+		var i ListQuestLinesWithCountRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.SortOrder,
+			&i.QuestType,
+			&i.CreatedAt,
+			&i.ActiveQuestCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateQuestLine = `-- name: UpdateQuestLine :exec
 UPDATE quests.quest_lines SET name = $1, description = $2, sort_order = $3, quest_type = $4 WHERE id = $5
 `

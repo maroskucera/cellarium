@@ -28,18 +28,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     {{template "_nav" .Nav}}
     <header>
         <h1>{{.Line.Name}}</h1>
-        {{if .Line.Description.Valid}}<p style="color:var(--text-muted)">{{.Line.Description.String}}</p>{{end}}
+        {{if .Line.QuestType.Valid}}<p class="quest-type">{{.Line.QuestType.String}}</p>{{end}}
+        {{if .Line.Description.Valid}}<p class="quest-meta">{{.Line.Description.String}}</p>{{end}}
         <div class="btn-row">
+            <a href="/quests/new?quest_line_id={{.Line.ID}}" class="btn btn-secondary">+ New Quest</a>
             <a href="/quest-lines/{{.Line.ID}}/edit" class="btn btn-secondary">Edit</a>
             <a href="/quest-lines" class="btn btn-secondary">Back</a>
         </div>
     </header>
 
     {{if .Quests}}
-    <ul class="quest-list" style="list-style:none;padding:0;margin:0">
+    <ul class="quest-list" aria-label="Quests in {{.Line.Name}}">
     {{range .Quests}}
         <li class="quest-card{{if eq .Status "completed"}} status-completed{{end}}{{if eq .Status "failed"}} status-failed{{end}}" data-quest-id="{{.ID}}">
-            <a href="/quests/{{.ID}}" class="quest-card-link">
+            {{if ne .Status "failed"}}<input type="checkbox" class="quest-complete-cb" data-quest-id="{{.ID}}" aria-label="Complete {{.Title}}"{{if eq .Status "completed"}} checked{{end}}>{{end}}
+            <a href="/quests/{{.ID}}/edit" class="quest-card-link">
                 <div class="quest-card-body">
                     <p class="quest-title">{{.Title}}{{if .HasDescription}} 📝{{end}}</p>
                     <p class="quest-meta">
@@ -59,6 +62,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     </div>
     {{end}}
 </main>
+<script src="/static/completion.js"></script>
+<script src="/static/reorder.js"></script>
 </body>
 </html>
 {{end}}

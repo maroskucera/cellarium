@@ -36,7 +36,7 @@ SELECT id, title, description, quest_type, quest_date, quest_line_id, quest_give
 FROM quests.quests WHERE status IN ('completed','failed') ORDER BY COALESCE(completed_at, failed_at) DESC NULLS LAST, id DESC;
 
 -- name: UpdateQuest :exec
-UPDATE quests.quests SET title = @title, description = @description, quest_type = @quest_type, quest_date = @quest_date, quest_line_id = @quest_line_id, quest_giver = @quest_giver, reminder_time = @reminder_time, sort_order = @sort_order, recurrence_type = @recurrence_type, recurrence_n = @recurrence_n, recurrence_unit = @recurrence_unit, recurrence_end_date = @recurrence_end_date, recurrence_instance = @recurrence_instance, recurrence_max_instances = @recurrence_max_instances WHERE id = @id;
+UPDATE quests.quests SET title = @title, description = @description, quest_type = @quest_type, quest_date = @quest_date, quest_line_id = @quest_line_id, quest_giver = @quest_giver, reminder_time = @reminder_time, sort_order = @sort_order, recurrence_type = @recurrence_type, recurrence_n = @recurrence_n, recurrence_unit = @recurrence_unit, recurrence_end_date = @recurrence_end_date, recurrence_instance = @recurrence_instance, recurrence_max_instances = @recurrence_max_instances, reminder_sent_at = CASE WHEN quest_date IS DISTINCT FROM @quest_date OR reminder_time IS DISTINCT FROM @reminder_time THEN NULL ELSE reminder_sent_at END WHERE id = @id;
 
 -- name: CompleteQuest :exec
 UPDATE quests.quests SET status = 'completed', completed_at = now() WHERE id = @id;

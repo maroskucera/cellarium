@@ -528,7 +528,7 @@ func (q *Queries) UncompleteQuestAndResetDate(ctx context.Context, arg Uncomplet
 }
 
 const updateQuest = `-- name: UpdateQuest :exec
-UPDATE quests.quests SET title = $1, description = $2, quest_type = $3, quest_date = $4, quest_line_id = $5, quest_giver = $6, reminder_time = $7, sort_order = $8, recurrence_type = $9, recurrence_n = $10, recurrence_unit = $11, recurrence_end_date = $12, recurrence_instance = $13, recurrence_max_instances = $14 WHERE id = $15
+UPDATE quests.quests SET title = $1, description = $2, quest_type = $3, quest_date = $4, quest_line_id = $5, quest_giver = $6, reminder_time = $7, sort_order = $8, recurrence_type = $9, recurrence_n = $10, recurrence_unit = $11, recurrence_end_date = $12, recurrence_instance = $13, recurrence_max_instances = $14, reminder_sent_at = CASE WHEN quest_date IS DISTINCT FROM $4 OR reminder_time IS DISTINCT FROM $7 THEN NULL ELSE reminder_sent_at END WHERE id = $15
 `
 
 type UpdateQuestParams struct {

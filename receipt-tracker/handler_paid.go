@@ -29,13 +29,16 @@ import (
 type paidEntry struct {
 	ID     int64
 	Date   string
+	Note   string
 	Amount string
 	Batch  int32
 }
 
 type batchGroup struct {
-	Batch   int32
-	Entries []paidEntry
+	Batch      int32
+	Total      string
+	Entries    []paidEntry
+	totalCents int64
 }
 
 type paidPageData struct {
@@ -44,21 +47,47 @@ type paidPageData struct {
 	Success bool
 }
 
+// numericFromPgtypeCents converts a NUMERIC(_, 2) value to integer cents
+// exactly. Cents = Int * 10^(Exp+2). For values already stored at Exp=-2
+// this is a zero-cost pass-through; other exponents are handled via big.Int
+// scaling with half-away-from-zero rounding for the lossy case.
+func numericFromPgtypeCents(v sqlc.ListUnpaidEntriesRow) int64 {
+	if !v.Value.Valid || v.Value.NaN || v.Value.Int == nil {
+		return 0
+	}
+	shift := int(v.Value.Exp) + 2
+	n := new(big.Int).Set(v.Value.Int)
+	switch {
+	case shift > 0:
+		mul := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(shift)), nil)
+		n.Mul(n, mul)
+	case shift < 0:
+		div := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(-shift)), nil)
+		half := new(big.Int).Rsh(div, 1)
+		sign := n.Sign()
+		abs := new(big.Int).Abs(n)
+		abs.Add(abs, half)
+		abs.Quo(abs, div)
+		if sign < 0 {
+			n.Neg(abs)
+		} else {
+			n.Set(abs)
+		}
+	}
+	return n.Int64()
+}
+
+func formatCents(c int64) string {
+	neg := ""
+	if c < 0 {
+		neg = "-"
+		c = -c
+	}
+	return fmt.Sprintf("%s%d.%02d", neg, c/100, c%100)
+}
+
 func formatNumericFromPgtype(v sqlc.ListUnpaidEntriesRow) string {
-	if !v.Value.Valid {
-		return "0.00"
-	}
-	// Reconstruct from Int and Exp: value = Int * 10^Exp
-	f := new(big.Float).SetInt(v.Value.Int)
-	if v.Value.Exp < 0 {
-		divisor := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(-v.Value.Exp)), nil))
-		f.Quo(f, divisor)
-	} else if v.Value.Exp > 0 {
-		multiplier := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(v.Value.Exp)), nil))
-		f.Mul(f, multiplier)
-	}
-	result, _ := f.Float64()
-	return fmt.Sprintf("%.2f", result)
+	return formatCents(numericFromPgtypeCents(v))
 }
 
 func handlePaid(q sqlc.Querier, tmpl *template.Template) http.Handler {
@@ -83,6 +112,7 @@ func handlePaid(q sqlc.Querier, tmpl *template.Template) http.Handler {
 				pe := paidEntry{
 					ID:     e.ID,
 					Date:   date,
+					Note:   e.Note,
 					Amount: formatNumericFromPgtype(e),
 					Batch:  e.Batch,
 				}
@@ -94,6 +124,10 @@ func handlePaid(q sqlc.Querier, tmpl *template.Template) http.Handler {
 					batches = append(batches, batchGroup{Batch: e.Batch})
 				}
 				batches[idx].Entries = append(batches[idx].Entries, pe)
+				batches[idx].totalCents += numericFromPgtypeCents(e)
+			}
+			for i := range batches {
+				batches[i].Total = formatCents(batches[i].totalCents)
 			}
 
 			data := paidPageData{

@@ -35,7 +35,7 @@ FROM next_batch nb
 RETURNING id;
 
 -- name: ListUnpaidEntries :many
-SELECT id, value, entry_date, batch
+SELECT id, value, entry_date, note, batch
 FROM receipts.entries
 WHERE paid = FALSE
 ORDER BY batch ASC, entry_date ASC, id ASC;

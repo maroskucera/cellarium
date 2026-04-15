@@ -18,6 +18,7 @@
 
 document.addEventListener("DOMContentLoaded", function () {
   var batchToggles = document.querySelectorAll(".batch-toggle");
+  var selectedTotalEl = document.getElementById("selected-total-value");
 
   function updateBatchToggle(batch) {
     var entries = document.querySelectorAll('.entry-cb[data-batch="' + batch + '"]');
@@ -28,17 +29,31 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function recalcSelectedTotal() {
+    if (!selectedTotalEl) return;
+    var cents = 0;
+    document.querySelectorAll(".entry-cb:checked").forEach(function (cb) {
+      var amount = parseFloat(cb.dataset.amount);
+      if (!isNaN(amount)) cents += Math.round(amount * 100);
+    });
+    selectedTotalEl.textContent = (cents / 100).toFixed(2);
+  }
+
   batchToggles.forEach(function (batchCb) {
     batchCb.addEventListener("change", function () {
       var batch = batchCb.dataset.batch;
       var entries = document.querySelectorAll('.entry-cb[data-batch="' + batch + '"]');
       entries.forEach(function (cb) { cb.checked = batchCb.checked; });
+      recalcSelectedTotal();
     });
   });
 
   document.querySelectorAll(".entry-cb").forEach(function (entryCb) {
     entryCb.addEventListener("change", function () {
       updateBatchToggle(entryCb.dataset.batch);
+      recalcSelectedTotal();
     });
   });
+
+  recalcSelectedTotal();
 });

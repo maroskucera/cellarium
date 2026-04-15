@@ -230,10 +230,12 @@ func dateFromString(s string) pgtype.Date {
 	return pgtype.Date{Time: t, Valid: true}
 }
 
-const testPaidTemplate = `{{if .Success}}<div class="success">Entries marked as paid</div>{{end}}{{if .Error}}<div class="error">{{.Error}}</div>{{end}}{{if .Batches}}<table>{{range .Batches}}<tr class="batch-header"><td></td><td>Batch {{.Batch}}</td><td></td><td><input type="checkbox" class="batch-toggle" data-batch="{{.Batch}}"></td></tr>{{range .Entries}}<tr><td>{{.Date}}</td><td>{{.Amount}}</td><td>{{.Batch}}</td><td><input type="checkbox" name="ids" value="{{.ID}}" data-batch="{{.Batch}}"></td></tr>{{end}}{{end}}</table>{{else}}<p class="empty">No outstanding receipts</p>{{end}}`
-
-func newTestPaidHandler(stub *stubQuerier) http.Handler {
-	tmpl := template.Must(template.New("paid").Parse(testPaidTemplate))
+func newTestPaidHandler(t *testing.T, stub *stubQuerier) http.Handler {
+	t.Helper()
+	tmpl, err := template.ParseFiles("templates/paid.html")
+	if err != nil {
+		t.Fatalf("parse paid.html: %v", err)
+	}
 	return handlePaid(stub, tmpl)
 }
 
@@ -245,7 +247,7 @@ func TestHandlePaid(t *testing.T) {
 			{ID: 2, Value: numericFromString("20.00"), EntryDate: dateFromString("2026-03-11"), Batch: 1},
 			{ID: 3, Value: numericFromString("5.75"), EntryDate: dateFromString("2026-03-15"), Batch: 2},
 		}
-		handler := newTestPaidHandler(stub)
+		handler := newTestPaidHandler(t, stub)
 
 		req := httptest.NewRequest(http.MethodGet, "/paid", nil)
 		w := httptest.NewRecorder()
@@ -280,7 +282,7 @@ func TestHandlePaid(t *testing.T) {
 	t.Run("GET with no entries shows empty message", func(t *testing.T) {
 		stub := newStubQuerier()
 		stub.unpaidEntries = nil
-		handler := newTestPaidHandler(stub)
+		handler := newTestPaidHandler(t, stub)
 
 		req := httptest.NewRequest(http.MethodGet, "/paid", nil)
 		w := httptest.NewRecorder()
@@ -301,7 +303,7 @@ func TestHandlePaid(t *testing.T) {
 		stub.unpaidEntries = []sqlc.ListUnpaidEntriesRow{
 			{ID: 1, Value: numericFromString("10.00"), EntryDate: dateFromString("2026-03-10"), Batch: 3},
 		}
-		handler := newTestPaidHandler(stub)
+		handler := newTestPaidHandler(t, stub)
 
 		req := httptest.NewRequest(http.MethodGet, "/paid", nil)
 		w := httptest.NewRecorder()
@@ -320,7 +322,7 @@ func TestHandlePaid(t *testing.T) {
 	t.Run("GET with db error returns 500", func(t *testing.T) {
 		stub := newStubQuerier()
 		stub.listUnpaidErr = errors.New("db error")
-		handler := newTestPaidHandler(stub)
+		handler := newTestPaidHandler(t, stub)
 
 		req := httptest.NewRequest(http.MethodGet, "/paid", nil)
 		w := httptest.NewRecorder()
@@ -334,7 +336,7 @@ func TestHandlePaid(t *testing.T) {
 
 	t.Run("GET with saved=1 shows success message", func(t *testing.T) {
 		stub := newStubQuerier()
-		handler := newTestPaidHandler(stub)
+		handler := newTestPaidHandler(t, stub)
 
 		req := httptest.NewRequest(http.MethodGet, "/paid?saved=1", nil)
 		w := httptest.NewRecorder()
@@ -348,7 +350,7 @@ func TestHandlePaid(t *testing.T) {
 
 	t.Run("POST with selected IDs marks as paid and redirects", func(t *testing.T) {
 		stub := newStubQuerier()
-		handler := newTestPaidHandler(stub)
+		handler := newTestPaidHandler(t, stub)
 
 		body := "ids=1&ids=3&ids=5"
 		req := httptest.NewRequest(http.MethodPost, "/paid", strings.NewReader(body))
@@ -379,7 +381,7 @@ func TestHandlePaid(t *testing.T) {
 
 	t.Run("POST with no IDs redirects without marking", func(t *testing.T) {
 		stub := newStubQuerier()
-		handler := newTestPaidHandler(stub)
+		handler := newTestPaidHandler(t, stub)
 
 		req := httptest.NewRequest(http.MethodPost, "/paid", strings.NewReader(""))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -398,7 +400,7 @@ func TestHandlePaid(t *testing.T) {
 
 	t.Run("POST with invalid ID returns 400", func(t *testing.T) {
 		stub := newStubQuerier()
-		handler := newTestPaidHandler(stub)
+		handler := newTestPaidHandler(t, stub)
 
 		body := "ids=abc"
 		req := httptest.NewRequest(http.MethodPost, "/paid", strings.NewReader(body))
@@ -414,7 +416,7 @@ func TestHandlePaid(t *testing.T) {
 
 	t.Run("PUT returns 405", func(t *testing.T) {
 		stub := newStubQuerier()
-		handler := newTestPaidHandler(stub)
+		handler := newTestPaidHandler(t, stub)
 
 		req := httptest.NewRequest(http.MethodPut, "/paid", nil)
 		w := httptest.NewRecorder()
@@ -425,4 +427,164 @@ func TestHandlePaid(t *testing.T) {
 			t.Errorf("got status %d, want %d", w.Code, http.StatusMethodNotAllowed)
 		}
 	})
+
+	t.Run("GET batch header shows batch total", func(t *testing.T) {
+		stub := newStubQuerier()
+		stub.unpaidEntries = []sqlc.ListUnpaidEntriesRow{
+			{ID: 1, Value: numericFromString("10.50"), EntryDate: dateFromString("2026-03-10"), Batch: 1},
+			{ID: 2, Value: numericFromString("5.25"), EntryDate: dateFromString("2026-03-11"), Batch: 1},
+			{ID: 3, Value: numericFromString("20.00"), EntryDate: dateFromString("2026-03-15"), Batch: 2},
+		}
+		handler := newTestPaidHandler(t, stub)
+
+		req := httptest.NewRequest(http.MethodGet, "/paid", nil)
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		body := w.Body.String()
+		if !strings.Contains(body, `<td class="batch-total">15.75</td>`) {
+			t.Error("response does not contain batch total 15.75 for batch 1")
+		}
+		if !strings.Contains(body, `<td class="batch-total">20.00</td>`) {
+			t.Error("response does not contain batch total 20.00 for batch 2")
+		}
+	})
+
+	t.Run("GET batch total handles single entry", func(t *testing.T) {
+		stub := newStubQuerier()
+		stub.unpaidEntries = []sqlc.ListUnpaidEntriesRow{
+			{ID: 1, Value: numericFromString("7.00"), EntryDate: dateFromString("2026-03-10"), Batch: 4},
+		}
+		handler := newTestPaidHandler(t, stub)
+
+		req := httptest.NewRequest(http.MethodGet, "/paid", nil)
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		body := w.Body.String()
+		if !strings.Contains(body, `<td class="batch-total">7.00</td>`) {
+			t.Error("response does not contain batch total 7.00 for single-entry batch")
+		}
+	})
+
+	t.Run("GET entry checkbox carries data-amount", func(t *testing.T) {
+		stub := newStubQuerier()
+		stub.unpaidEntries = []sqlc.ListUnpaidEntriesRow{
+			{ID: 1, Value: numericFromString("12.34"), EntryDate: dateFromString("2026-03-10"), Batch: 1},
+		}
+		handler := newTestPaidHandler(t, stub)
+
+		req := httptest.NewRequest(http.MethodGet, "/paid", nil)
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		body := w.Body.String()
+		if !strings.Contains(body, `data-amount="12.34"`) {
+			t.Error("response does not contain data-amount=\"12.34\" on entry checkbox")
+		}
+	})
+
+	t.Run("GET renders selected-total element before submit button", func(t *testing.T) {
+		stub := newStubQuerier()
+		stub.unpaidEntries = []sqlc.ListUnpaidEntriesRow{
+			{ID: 1, Value: numericFromString("10.00"), EntryDate: dateFromString("2026-03-10"), Batch: 1},
+		}
+		handler := newTestPaidHandler(t, stub)
+
+		req := httptest.NewRequest(http.MethodGet, "/paid", nil)
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		body := w.Body.String()
+		if !strings.Contains(body, `id="selected-total-value"`) {
+			t.Error("response does not contain selected-total-value element")
+		}
+		if !strings.Contains(body, `>0.00<`) {
+			t.Error("response does not contain initial 0.00 inside selected-total-value span")
+		}
+
+		totalIdx := strings.Index(body, `<span id="selected-total-value">`)
+		buttonIdx := strings.Index(body, `<button type="submit"`)
+		if totalIdx == -1 {
+			t.Fatal("selected-total-value not found in body")
+		}
+		if buttonIdx == -1 {
+			t.Fatal("submit button not found in body")
+		}
+		if totalIdx >= buttonIdx {
+			t.Errorf("selected-total-value (idx %d) should appear before submit button (idx %d)", totalIdx, buttonIdx)
+		}
+	})
+
+	t.Run("GET entry row shows note column", func(t *testing.T) {
+		stub := newStubQuerier()
+		stub.unpaidEntries = []sqlc.ListUnpaidEntriesRow{
+			{ID: 1, Value: numericFromString("10.00"), EntryDate: dateFromString("2026-03-10"), Batch: 1, Note: "coffee beans"},
+		}
+		handler := newTestPaidHandler(t, stub)
+
+		req := httptest.NewRequest(http.MethodGet, "/paid", nil)
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		body := w.Body.String()
+		if !strings.Contains(body, "<th>Note</th>") {
+			t.Error("response does not contain Note column header")
+		}
+		if !strings.Contains(body, "coffee beans") {
+			t.Error("response does not contain note text")
+		}
+	})
+
+	t.Run("GET batch total is exact across many entries", func(t *testing.T) {
+		stub := newStubQuerier()
+		stub.unpaidEntries = []sqlc.ListUnpaidEntriesRow{
+			{ID: 1, Value: numericFromString("0.10"), EntryDate: dateFromString("2026-03-10"), Batch: 1},
+			{ID: 2, Value: numericFromString("0.20"), EntryDate: dateFromString("2026-03-10"), Batch: 1},
+			{ID: 3, Value: numericFromString("0.30"), EntryDate: dateFromString("2026-03-10"), Batch: 1},
+			{ID: 4, Value: numericFromString("0.40"), EntryDate: dateFromString("2026-03-10"), Batch: 1},
+		}
+		handler := newTestPaidHandler(t, stub)
+
+		req := httptest.NewRequest(http.MethodGet, "/paid", nil)
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		body := w.Body.String()
+		if !strings.Contains(body, `<td class="batch-total">1.00</td>`) {
+			t.Error("response does not contain exact batch total 1.00 for 0.10+0.20+0.30+0.40")
+		}
+	})
+}
+
+func TestNumericFromPgtypeCents(t *testing.T) {
+	tests := []struct {
+		name string
+		v    pgtype.Numeric
+		want int64
+	}{
+		{"Exp=-2 pass-through", pgtype.Numeric{Int: big.NewInt(1050), Exp: -2, Valid: true}, 1050},
+		{"Exp=0 scales up", pgtype.Numeric{Int: big.NewInt(7), Exp: 0, Valid: true}, 700},
+		{"Exp=-3 rounds half away from zero (up)", pgtype.Numeric{Int: big.NewInt(12345), Exp: -3, Valid: true}, 1235},
+		{"Exp=-3 negative rounds half away from zero (down)", pgtype.Numeric{Int: big.NewInt(-12345), Exp: -3, Valid: true}, -1235},
+		{"Exp=-3 half unit rounds to 0.01", pgtype.Numeric{Int: big.NewInt(5), Exp: -3, Valid: true}, 1},
+		{"Exp=-3 below half rounds down", pgtype.Numeric{Int: big.NewInt(4), Exp: -3, Valid: true}, 0},
+		{"invalid returns 0", pgtype.Numeric{Valid: false}, 0},
+		{"NaN returns 0", pgtype.Numeric{NaN: true, Valid: true}, 0},
+		{"nil Int returns 0", pgtype.Numeric{Valid: true}, 0},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := numericFromPgtypeCents(sqlc.ListUnpaidEntriesRow{Value: tc.v})
+			if got != tc.want {
+				t.Errorf("got %d cents, want %d", got, tc.want)
+			}
+		})
+	}
 }

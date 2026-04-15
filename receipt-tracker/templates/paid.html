@@ -36,6 +36,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <thead>
           <tr>
             <th>Date</th>
+            <th>Note</th>
             <th>Amount</th>
             <th class="col-check"></th>
           </tr>
@@ -43,20 +44,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <tbody>
           {{range .Batches}}
           <tr class="batch-header">
-            <td>Batch {{.Batch}}</td>
-            <td></td>
+            <td colspan="2">Batch {{.Batch}}</td>
+            <td class="batch-total">{{.Total}}</td>
             <td class="col-check"><input type="checkbox" class="batch-toggle" data-batch="{{.Batch}}"></td>
           </tr>
           {{range .Entries}}
           <tr>
             <td>{{.Date}}</td>
+            <td class="entry-note">{{.Note}}</td>
             <td>{{.Amount}}</td>
-            <td class="col-check"><input type="checkbox" name="ids" value="{{.ID}}" class="entry-cb" data-batch="{{.Batch}}"></td>
+            <td class="col-check"><input type="checkbox" name="ids" value="{{.ID}}" class="entry-cb" data-batch="{{.Batch}}" data-amount="{{.Amount}}"></td>
           </tr>
           {{end}}
           {{end}}
         </tbody>
       </table>
+      <div class="selected-total" aria-live="polite">Selected: <span id="selected-total-value">0.00</span></div>
       <button type="submit">Mark as Paid</button>
     </form>
     {{else}}

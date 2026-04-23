@@ -5,7 +5,7 @@ go 1.25.6
 require (
 	github.com/SherClockHolmes/webpush-go v1.3.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
 )
 
